@@ -241,7 +241,7 @@ function App() {
   const isDirty = selectedModel !== activeModel || selectedReasoning !== activeReasoning;
 
   return (
-    <div className="flex h-screen w-full min-w-0 flex-col font-sans bg-[hsl(var(--background))] text-[hsl(var(--foreground))] p-5 overflow-hidden gap-5">
+    <div className="flex h-screen w-full min-w-0 flex-col font-sans bg-[hsl(var(--background))] text-[hsl(var(--foreground))] px-7 pt-6 pb-4 overflow-hidden gap-4">
       
       {update && (
         <div className="shrink-0 flex items-center gap-3 rounded-xl border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/10 px-4 py-2.5">
@@ -386,7 +386,7 @@ function App() {
       {/* 5. Footer */}
       <div className="shrink-0 flex items-center justify-between">
         <StatusBar items={statusItems} />
-        <span className="text-[10px] font-mono text-[hsl(var(--muted-foreground))] opacity-50">v0.1.0</span>
+        <span className="text-[10px] font-mono text-[hsl(var(--muted-foreground))] opacity-50">v{__APP_VERSION__}</span>
       </div>
 
       {toast && (

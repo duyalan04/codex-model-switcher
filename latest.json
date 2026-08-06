@@ -1,5 +1,5 @@
 {
-    "version":  "0.2.1",
-    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.2.1_x64-setup.exe",
-    "notes":  "Fixed window size so the two-column layout is identical on every machine"
+    "version":  "0.2.2",
+    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.2.2_x64-setup.exe",
+    "notes":  "Display the real package version in the footer"
 }
