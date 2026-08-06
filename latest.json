@@ -1,5 +1,5 @@
 {
-    "version":  "0.2.2",
-    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.2.2_x64-setup.exe",
-    "notes":  "Display the real package version in the footer"
+    "version":  "0.2.3",
+    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.2.3_x64-setup.exe",
+    "notes":  "Sửa khoảng cách giao diện và tự động tạo GitHub Release"
 }

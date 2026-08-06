@@ -307,7 +307,7 @@ function App() {
       </header>
 
       {/* 2. Main Dashboard Layout (2 Columns) */}
-      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pb-1 custom-scrollbar">
+      <div className="custom-scrollbar flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-1.5 pb-1">
         <div className="grid grid-cols-2 gap-5 items-start">
           
           {/* LEFT COLUMN: Model Switcher (7 cols) */}

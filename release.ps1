@@ -1,10 +1,10 @@
-# Bumps the version, builds the installer, commits, tags, and publishes the
-# GitHub release with both assets attached.
+# Bumps the version, validates the project, then pushes a release tag.
+# GitHub Actions builds the installer and publishes the GitHub release.
 # Usage: .\release.ps1 0.3.0 "What changed"
 param(
     [Parameter(Mandatory = $true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
     [string]$Notes = "",
-    # Stops after building, leaving the commit, tag, and release to you.
+    # Stops after validation, leaving the version changes uncommitted.
     [switch]$NoPublish
 )
 
@@ -21,14 +21,20 @@ function Write-TextFile([string]$Path, [string]$Content) {
 
 function Set-FileText([string]$Path, [string]$Pattern, [string]$Replacement) {
     $text = Get-Content -Raw -Encoding UTF8 -LiteralPath $Path
+    if (-not [regex]::IsMatch($text, $Pattern)) { throw "Version pattern not found in $Path" }
     $updated = [regex]::Replace($text, $Pattern, $Replacement, 1)
-    if ($updated -eq $text) { throw "Version pattern not found in $Path" }
-    Write-TextFile $Path $updated
+    if ($updated -ne $text) { Write-TextFile $Path $updated }
 }
 
-Set-FileText 'src-tauri\Cargo.toml'      '(?m)^version = "\d+\.\d+\.\d+"'   "version = `"$Version`""
-Set-FileText 'src-tauri\tauri.conf.json' '"version": "\d+\.\d+\.\d+"'      "`"version`": `"$Version`""
-Set-FileText 'package.json'              '"version": "\d+\.\d+\.\d+"'      "`"version`": `"$Version`""
+$tag = "v$Version"
+git rev-parse --verify --quiet "refs/tags/$tag" *> $null
+if ($LASTEXITCODE -eq 0) { throw "Tag $tag already exists locally." }
+
+npm.cmd version $Version --no-git-tag-version --allow-same-version
+if ($LASTEXITCODE -ne 0) { throw 'Updating package version failed.' }
+
+Set-FileText 'src-tauri\Cargo.toml'      '(?m)^version = "\d+\.\d+\.\d+"' "version = `"$Version`""
+Set-FileText 'src-tauri\tauri.conf.json' '"version": "\d+\.\d+\.\d+"'    "`"version`": `"$Version`""
 
 $installer = "codex-model-switcher_${Version}_x64-setup.exe"
 $manifest = [ordered]@{
@@ -38,23 +44,19 @@ $manifest = [ordered]@{
 } | ConvertTo-Json
 Write-TextFile 'latest.json' $manifest
 
-# NSIS only: the WiX/MSI toolchain fails on this machine and the updater uses the NSIS installer.
-npm run tauri -- build --bundles nsis
-if ($LASTEXITCODE -ne 0) { throw 'Build failed (close the running app first).' }
-
-$installerPath = "src-tauri\target\release\bundle\nsis\$installer"
-if (-not (Test-Path -LiteralPath $installerPath)) { throw "Installer not found at $installerPath" }
+node node_modules\typescript\bin\tsc --noEmit
+if ($LASTEXITCODE -ne 0) { throw 'TypeScript check failed.' }
+cargo test --manifest-path src-tauri\Cargo.toml
+if ($LASTEXITCODE -ne 0) { throw 'Rust tests failed.' }
+cargo clippy --manifest-path src-tauri\Cargo.toml --lib --all-targets -- -D warnings
+if ($LASTEXITCODE -ne 0) { throw 'Clippy failed.' }
+npm run build
+if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed.' }
 
 if ($NoPublish) {
     Write-Host ""
-    Write-Host "Built v$Version. Publish skipped; attach these to a release tagged v${Version}:" -ForegroundColor Yellow
-    Write-Host "  $installerPath"
-    Write-Host "  latest.json"
+    Write-Host "Validated $tag. Commit and push skipped." -ForegroundColor Yellow
     return
-}
-
-if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    throw "GitHub CLI not found. Install it with 'winget install GitHub.cli', run 'gh auth login', or rerun with -NoPublish."
 }
 
 git add -A
@@ -67,16 +69,14 @@ if ($LASTEXITCODE -ne 0) {
     if ($LASTEXITCODE -ne 0) { throw 'git commit failed.' }
 }
 
-git tag -a "v$Version" -m "v$Version" 2>$null
-git push
-if ($LASTEXITCODE -ne 0) { throw 'git push failed.' }
-git push origin "v$Version"
-if ($LASTEXITCODE -ne 0) { throw "Pushing tag v$Version failed." }
+git tag -a $tag -m $tag
+if ($LASTEXITCODE -ne 0) { throw "Creating tag $tag failed." }
 
-$releaseNotes = if ($Notes) { $Notes } else { "Release v$Version" }
-gh release create "v$Version" $installerPath 'latest.json' --title "v$Version" --notes $releaseNotes --latest
-if ($LASTEXITCODE -ne 0) { throw "gh release create failed for v$Version." }
+$branch = git branch --show-current
+if (-not $branch) { throw 'Cannot publish from a detached HEAD.' }
+git push --atomic origin $branch $tag
+if ($LASTEXITCODE -ne 0) { throw "Push failed. Retry with: git push --atomic origin $branch $tag" }
 
 Write-Host ""
-Write-Host "Published v$Version. Other machines will see the update banner on next launch." -ForegroundColor Green
-Write-Host "  $repo/releases/latest/download/latest.json"
+Write-Host "Pushed $tag. GitHub Actions is building and publishing the release." -ForegroundColor Green
+Write-Host "  $repo/actions"

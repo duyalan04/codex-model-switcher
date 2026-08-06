@@ -54,3 +54,6 @@ body {
   overflow: hidden;
 }
 
+.custom-scrollbar {
+  scrollbar-gutter: stable;
+}

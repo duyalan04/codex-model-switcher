@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check TypeScript
+        run: node node_modules/typescript/bin/tsc --noEmit
+
+      - name: Test Rust
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Lint Rust
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --lib --all-targets -- -D warnings
+
+      - name: Build NSIS installer
+        run: npm run tauri -- build --bundles nsis
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $manifest = Get-Content -Raw latest.json | ConvertFrom-Json
+          if ($manifest.version -ne $version) {
+            throw "latest.json version $($manifest.version) does not match tag $env:GITHUB_REF_NAME"
+          }
+
+          $installer = "src-tauri/target/release/bundle/nsis/codex-model-switcher_${version}_x64-setup.exe"
+          if (-not (Test-Path -LiteralPath $installer)) {
+            throw "Installer not found at $installer"
+          }
+
+          $notes = if ($manifest.notes) { $manifest.notes } else { "Release $env:GITHUB_REF_NAME" }
+          Set-Content -Encoding UTF8 release-notes.txt $notes
+          gh release create $env:GITHUB_REF_NAME `
+            $installer `
+            latest.json `
+            --title $env:GITHUB_REF_NAME `
+            --notes-file release-notes.txt `
+            --latest
