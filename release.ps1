@@ -1,8 +1,11 @@
-# Bumps the version everywhere, builds the installer, and refreshes latest.json.
-# Usage: .\release.ps1 0.2.0 "What changed"
+# Bumps the version, builds the installer, commits, tags, and publishes the
+# GitHub release with both assets attached.
+# Usage: .\release.ps1 0.3.0 "What changed"
 param(
     [Parameter(Mandatory = $true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
-    [string]$Notes = ""
+    [string]$Notes = "",
+    # Stops after building, leaving the commit, tag, and release to you.
+    [switch]$NoPublish
 )
 
 $ErrorActionPreference = 'Stop'
@@ -39,7 +42,41 @@ Write-TextFile 'latest.json' $manifest
 npm run tauri -- build --bundles nsis
 if ($LASTEXITCODE -ne 0) { throw 'Build failed (close the running app first).' }
 
+$installerPath = "src-tauri\target\release\bundle\nsis\$installer"
+if (-not (Test-Path -LiteralPath $installerPath)) { throw "Installer not found at $installerPath" }
+
+if ($NoPublish) {
+    Write-Host ""
+    Write-Host "Built v$Version. Publish skipped; attach these to a release tagged v${Version}:" -ForegroundColor Yellow
+    Write-Host "  $installerPath"
+    Write-Host "  latest.json"
+    return
+}
+
+if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+    throw "GitHub CLI not found. Install it with 'winget install GitHub.cli', run 'gh auth login', or rerun with -NoPublish."
+}
+
+git add -A
+if ($LASTEXITCODE -ne 0) { throw 'git add failed.' }
+
+# Nothing to commit is fine; the version bump may already be committed.
+git diff --cached --quiet
+if ($LASTEXITCODE -ne 0) {
+    git commit -q -m "Release v$Version"
+    if ($LASTEXITCODE -ne 0) { throw 'git commit failed.' }
+}
+
+git tag -a "v$Version" -m "v$Version" 2>$null
+git push
+if ($LASTEXITCODE -ne 0) { throw 'git push failed.' }
+git push origin "v$Version"
+if ($LASTEXITCODE -ne 0) { throw "Pushing tag v$Version failed." }
+
+$releaseNotes = if ($Notes) { $Notes } else { "Release v$Version" }
+gh release create "v$Version" $installerPath 'latest.json' --title "v$Version" --notes $releaseNotes --latest
+if ($LASTEXITCODE -ne 0) { throw "gh release create failed for v$Version." }
+
 Write-Host ""
-Write-Host "Built v$Version. Upload these two files to a new GitHub release tagged v${Version}:" -ForegroundColor Green
-Write-Host "  src-tauri\target\release\bundle\nsis\$installer"
-Write-Host "  latest.json"
+Write-Host "Published v$Version. Other machines will see the update banner on next launch." -ForegroundColor Green
+Write-Host "  $repo/releases/latest/download/latest.json"

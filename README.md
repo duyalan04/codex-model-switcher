@@ -21,10 +21,19 @@ To override it (staging, internal host), add `update_url` to `%APPDATA%\9router\
 Close the running app, then:
 
 ```powershell
-.\release.ps1 0.2.0 "Adds remaining quota panel"
+.\release.ps1 0.3.0 "Adds remaining quota panel"
 ```
 
-That bumps the version in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`, regenerates `latest.json`, and builds the installer. Upload both files it prints to a new GitHub release tagged `v0.2.0`, keeping the installer filename unchanged so `releases/latest/download/` resolves.
+That is the whole release. The script bumps the version in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`, regenerates `latest.json`, builds the installer, commits, tags, pushes, and publishes the GitHub release with the installer and `latest.json` attached.
+
+It needs the GitHub CLI once:
+
+```powershell
+winget install GitHub.cli
+gh auth login
+```
+
+Use `-NoPublish` to build only and handle the release manually.
 
 Every machine already running a build with this updater sees the banner on next launch. Clicking **Update now** downloads the installer and runs it with `/UPDATE /P`, so it overwrites the existing installation in place: no directory prompts, no duplicate install, and settings under `%APPDATA%\9router` are untouched. The app closes so its files are unlocked while the installer replaces them.
 
