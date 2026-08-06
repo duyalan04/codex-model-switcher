@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
-  "url": "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.1.0_x64-setup.exe",
-  "notes": "Remaining quota panel and update notifications"
+    "version":  "0.2.0",
+    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.2.0_x64-setup.exe",
+    "notes":  "Wider quota panel, no clipped text, and a leaner codebase"
 }

@@ -935,7 +935,7 @@ pub fn install_update(download_url: String) -> Result<(), String> {
 
 fn port_from_url(url: &str) -> u16 {
     url.split(':')
-        .last()
+        .next_back()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8080)
 }
@@ -1175,95 +1175,4 @@ pub async fn restart_router(
 #[tauri::command]
 pub fn log_event(message: String) -> Result<(), String> {
     write_log(&message)
-}
-
-// ─── DB inspection ─────────────────────────────────────────────────────────────
-
-#[tauri::command]
-pub fn do_inspect() -> String {
-    let db_path = match get_9router_db_path() {
-        Ok(p) => p,
-        Err(e) => return format!("Error: {e}"),
-    };
-
-    let conn = match rusqlite::Connection::open(&db_path) {
-        Ok(c) => c,
-        Err(e) => return format!("Error opening DB: {e}"),
-    };
-
-    let mut output = format!("=== 9Router DB Inspector ===\nPath: {:?}\n\n", db_path);
-
-    let mut tables: Vec<String> = Vec::new();
-    if let Ok(mut stmt) = conn.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name") {
-        let rows: Vec<String> = stmt.query_map([], |row| row.get(0))
-            .ok()
-            .map(|rows| rows.filter_map(|r| r.ok()).collect())
-            .unwrap_or_default();
-        tables = rows;
-    }
-
-    output.push_str("Tables:\n");
-    for name in &tables {
-        output.push_str(&format!("  - {}\n", name));
-    }
-    output.push('\n');
-
-    let inspect_tables = ["usageHistory", "usageDaily", "providerConnections", "combos"];
-    for table_name in inspect_tables.iter() {
-        if tables.contains(&table_name.to_string()) {
-            output.push_str(&format!("=== {} ===\n", table_name));
-            if let Ok(mut stmt) = conn.prepare(&format!("SELECT sql FROM sqlite_master WHERE name='{}'", table_name)) {
-                if let Ok(schema) = stmt.query_row([], |row| row.get::<_, String>(0)) {
-                    output.push_str(&format!("Schema: {}\n", schema));
-                }
-            }
-            output.push('\n');
-        }
-    }
-
-    output
-}
-
-// ─── DB Query for inspection ─────────────────────────────────────────────────
-
-#[tauri::command]
-pub fn query_db_raw(sql: String) -> Result<String, String> {
-    let db_path = get_9router_db_path()?;
-    let conn = rusqlite::Connection::open(&db_path)
-        .map_err(|e| format!("Unable to open database: {e}"))?;
-
-    let mut stmt = conn.prepare(&sql)
-        .map_err(|e| format!("Query error: {e}"))?;
-
-    let col_count = stmt.column_count();
-    let mut output = String::new();
-
-    let columns: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
-    output.push_str(&columns.join(" | "));
-    output.push('\n');
-    output.push_str(&"-".repeat(columns.iter().map(|s| s.len()).sum::<usize>() + (col_count * 3)));
-    output.push('\n');
-
-    let mut rows = stmt.query([])
-        .map_err(|e| format!("Execute error: {e}"))?;
-
-    while let Some(row) = rows.next().map_err(|e| format!("Row error: {e}"))? {
-        let values: Vec<String> = (0..col_count)
-            .map(|i| {
-                let val: rusqlite::Result<rusqlite::types::Value> = row.get(i);
-                match val {
-                    Ok(rusqlite::types::Value::Null) => "NULL".to_string(),
-                    Ok(rusqlite::types::Value::Integer(n)) => n.to_string(),
-                    Ok(rusqlite::types::Value::Real(n)) => format!("{:.4}", n),
-                    Ok(rusqlite::types::Value::Text(s)) => s,
-                    Ok(rusqlite::types::Value::Blob(b)) => format!("[blob {} bytes]", b.len()),
-                    Err(_) => "ERROR".to_string(),
-                }
-            })
-            .collect();
-        output.push_str(&values.join(" | "));
-        output.push('\n');
-    }
-
-    Ok(output)
 }

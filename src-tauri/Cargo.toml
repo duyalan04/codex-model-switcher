@@ -1,14 +1,10 @@
 [package]
 name = "codex-model-switcher"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
 default-run = "codex-model-switcher"
-
-[[bin]]
-name = "check-api"
-path = "src/check_api.rs"
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary

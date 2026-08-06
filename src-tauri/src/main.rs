@@ -21,7 +21,6 @@ pub fn run() {
             codex_model_switcher_lib::get_quota,
             codex_model_switcher_lib::check_update,
             codex_model_switcher_lib::install_update,
-            codex_model_switcher_lib::do_inspect,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

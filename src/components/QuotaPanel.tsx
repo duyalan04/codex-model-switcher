@@ -139,32 +139,32 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
               {report.quotas.map(quota => (
                 <div key={quota.connection_id} className="rounded-md px-2 py-1.5 bg-[hsl(var(--muted))]/20 space-y-1">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="text-[11px] font-medium truncate">{quota.connection_name}</div>
                       <div className="text-[9px] text-[hsl(var(--muted-foreground))]">
                         {quota.plan_type} · {quota.is_active ? "active" : "inactive"}
                       </div>
                     </div>
                     {quota.primary_window && (
-                      <span className="text-[10px] font-bold text-[hsl(var(--success))] tabular-nums">
+                      <span className="shrink-0 text-[10px] font-bold text-[hsl(var(--success))] tabular-nums">
                         {quota.primary_window.remaining_percent.toFixed(0)}% left
                       </span>
                     )}
                   </div>
                   {quota.primary_window && (
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[9px] w-12 text-[hsl(var(--muted-foreground))]">Session</span>
+                      <span className="shrink-0 text-[9px] w-12 text-[hsl(var(--muted-foreground))]">Session</span>
                       <MiniBar value={quota.primary_window.remaining_percent} max={100} showPercent isRemaining />
-                      <span className="text-[9px] font-mono text-[hsl(var(--muted-foreground))]">
+                      <span className="shrink-0 text-[9px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums">
                         {fmtReset(quota.primary_window.reset_after_seconds, quota.primary_window.reset_at)}
                       </span>
                     </div>
                   )}
                   {quota.secondary_window && (
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[9px] w-12 text-[hsl(var(--muted-foreground))]">Secondary</span>
+                      <span className="shrink-0 text-[9px] w-12 text-[hsl(var(--muted-foreground))]">Secondary</span>
                       <MiniBar value={quota.secondary_window.remaining_percent} max={100} showPercent isRemaining />
-                      <span className="text-[9px] font-mono text-[hsl(var(--muted-foreground))]">
+                      <span className="shrink-0 text-[9px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums">
                         {fmtReset(quota.secondary_window.reset_after_seconds, quota.secondary_window.reset_at)}
                       </span>
                     </div>
@@ -187,15 +187,15 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
               </span>
               {report.providers.map(p => (
                 <div key={p.connection_id} className="flex items-center justify-between rounded-md px-2 py-1 bg-[hsl(var(--muted))]/20">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] font-medium truncate max-w-[140px]">
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[11px] font-medium truncate">
                       {p.connection_name || p.connection_id.slice(0, 8)}
                     </span>
                     <span className="text-[9px] text-[hsl(var(--muted-foreground))]">
                       {p.plan_type} · {p.days_active}d active
                     </span>
                   </div>
-                  <div className="flex flex-col items-end">
+                  <div className="flex flex-col items-end shrink-0">
                     <span className="text-[10px] font-bold tabular-nums">{fmt(p.total_calls)} calls</span>
                     <span className="text-[9px] font-mono text-[hsl(var(--primary))]">
                       Spent: {fmtCost(p.total_cost)}

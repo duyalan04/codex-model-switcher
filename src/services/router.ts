@@ -182,7 +182,3 @@ export async function checkUpdate(): Promise<UpdateInfo> {
 export async function installUpdate(downloadUrl: string): Promise<void> {
   return invoke<void>("install_update", { downloadUrl });
 }
-
-export async function queryDbRaw(sql: string): Promise<string> {
-  return invoke<string>("query_db_raw", { sql });
-}
