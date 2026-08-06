@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "codex-model-switcher",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "identifier": "com.zuy.codex-model-switcher",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -13,10 +13,11 @@
     "windows": [
       {
         "title": "Codex Model Switcher",
-        "width": 1024,
-        "height": 580,
-        "minWidth": 800,
-        "minHeight": 450,
+        "width": 1100,
+        "height": 660,
+        "minWidth": 1100,
+        "minHeight": 660,
+        "center": true,
         "resizable": true
       }
     ],

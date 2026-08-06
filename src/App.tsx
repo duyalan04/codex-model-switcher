@@ -308,10 +308,10 @@ function App() {
 
       {/* 2. Main Dashboard Layout (2 Columns) */}
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pb-1 custom-scrollbar">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <div className="grid grid-cols-2 gap-5 items-start">
           
           {/* LEFT COLUMN: Model Switcher (7 cols) */}
-          <div className="col-span-1 lg:col-span-6 min-w-0 flex flex-col gap-5">
+          <div className="min-w-0 flex flex-col gap-5">
             <section className="flex flex-col bg-[hsl(var(--muted))]/10 border border-[hsl(var(--border))]/40 rounded-2xl p-6 gap-6 h-full">
               {/* Target Model Area */}
               <div className="flex flex-col gap-3">
@@ -370,7 +370,7 @@ function App() {
           </div>
 
           {/* RIGHT COLUMN: Router Control & Quota Tracker (5 cols) */}
-          <div className="col-span-1 lg:col-span-6 min-w-0 flex flex-col gap-5">
+          <div className="min-w-0 flex flex-col gap-5">
             <section className="shrink-0">
               <RouterControl baseUrl={baseUrl} onStatusChange={handleRouterStatus} />
             </section>
