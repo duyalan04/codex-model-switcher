@@ -50,12 +50,16 @@ cargo test --manifest-path src-tauri\Cargo.toml
 if ($LASTEXITCODE -ne 0) { throw 'Rust tests failed.' }
 cargo clippy --manifest-path src-tauri\Cargo.toml --lib --all-targets -- -D warnings
 if ($LASTEXITCODE -ne 0) { throw 'Clippy failed.' }
-npm run build
-if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed.' }
+npm.cmd run tauri -- build --bundles nsis
+if ($LASTEXITCODE -ne 0) { throw 'NSIS build failed (close the running app first).' }
+
+$installerPath = "src-tauri\target\release\bundle\nsis\$installer"
+if (-not (Test-Path -LiteralPath $installerPath)) { throw "Installer not found at $installerPath" }
 
 if ($NoPublish) {
     Write-Host ""
-    Write-Host "Validated $tag. Commit and push skipped." -ForegroundColor Yellow
+    Write-Host "Built $tag. Commit and push skipped." -ForegroundColor Yellow
+    Write-Host "  $installerPath"
     return
 }
 
@@ -79,4 +83,5 @@ if ($LASTEXITCODE -ne 0) { throw "Push failed. Retry with: git push --atomic ori
 
 Write-Host ""
 Write-Host "Pushed $tag. GitHub Actions is building and publishing the release." -ForegroundColor Green
+Write-Host "  Local installer: $installerPath"
 Write-Host "  $repo/actions"

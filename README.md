@@ -123,13 +123,15 @@ Script tự động:
 
 1. Cập nhật version trong `package.json`, `package-lock.json`, `src-tauri/Cargo.toml` và `src-tauri/tauri.conf.json`.
 2. Tạo lại `latest.json`.
-3. Chạy kiểm tra TypeScript, Rust, Clippy và frontend build trên máy.
+3. Chạy kiểm tra TypeScript, Rust, Clippy và build installer NSIS trên máy.
 4. Commit, tạo tag và push branch cùng tag lên GitHub.
-5. GitHub Actions tự build installer NSIS, tạo GitHub Release và upload installer cùng `latest.json`.
+5. GitHub Actions build lại installer độc lập, tạo GitHub Release và upload installer cùng `latest.json`.
+
+Installer local được lưu tại `src-tauri\target\release\bundle\nsis\codex-model-switcher_<version>_x64-setup.exe`.
 
 Không cần cài GitHub CLI, không cần mở trình duyệt và không cần tạo Release bằng tay. Theo dõi tiến trình tại tab **Actions** của repository. Khi workflow hoàn tất, các máy đang cài ứng dụng sẽ thấy thông báo cập nhật trong lần mở tiếp theo.
 
-Dùng `-NoPublish` nếu chỉ muốn cập nhật version và chạy kiểm tra, không commit hoặc push:
+Dùng `-NoPublish` nếu chỉ muốn build installer local, không commit hoặc push:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\release.ps1 0.3.0 "Mô tả" -NoPublish
