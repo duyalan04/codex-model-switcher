@@ -26,7 +26,7 @@ function App() {
   const [config, setConfig] = useState<CodexConfig | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [routerLive, setRouterLive] = useState(false);
-  
+
   // UI Selection State
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedReasoning, setSelectedReasoning] = useState("medium");
@@ -241,164 +241,163 @@ function App() {
   const isDirty = selectedModel !== activeModel || selectedReasoning !== activeReasoning;
 
   return (
-    <div className="flex h-screen w-full min-w-0 flex-col font-sans bg-[hsl(var(--background))] text-[hsl(var(--foreground))] px-7 pt-6 pb-4 overflow-hidden gap-4">
-      
-      {update && (
-        <div className="shrink-0 flex items-center gap-3 rounded-xl border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/10 px-4 py-2.5">
-          <Download size={14} className="text-[hsl(var(--primary))] shrink-0" />
-          <div className="min-w-0 flex-1">
-            <span className="text-xs font-semibold">
-              Update available: v{update.latest_version}
-            </span>
-            <span className="text-[11px] text-[hsl(var(--muted-foreground))] ml-2">
-              (current v{update.current_version})
-            </span>
-            {update.notes && (
-              <div className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">{update.notes}</div>
-            )}
-          </div>
-          {update.download_url && (
-            <button
-              onClick={async () => {
-                if (!update.download_url) return;
-                setInstalling(true);
-                try {
-                  await installUpdate(update.download_url);
-                } catch (e) {
-                  setInstalling(false);
-                  showToast({ type: "error", message: typeof e === "string" ? e : String(e) });
-                }
-              }}
-              disabled={installing}
-              className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[hsl(var(--primary))] px-3 py-1.5 text-[11px] font-bold text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-60"
-            >
-              {installing ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
-              {installing ? "Installing..." : "Update now"}
-            </button>
-          )}
-          <button
-            onClick={() => setUpdate(null)}
-            title="Dismiss"
-            className="shrink-0 flex h-6 w-6 items-center justify-center rounded-md hover:bg-[hsl(var(--muted))]"
-          >
-            <X size={12} />
-          </button>
-        </div>
-      )}
-
-      {/* 1. Header Row */}
-      <header className="flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[hsl(var(--primary))] to-blue-500 text-white shadow-md">
-            <Cpu size={20} />
-          </div>
-          <div>
-            <h1 className="text-base font-bold tracking-tight text-[hsl(var(--foreground))] leading-tight">Codex Switcher</h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">9Router Control</span>
-              <div className="w-1 h-1 rounded-full bg-[hsl(var(--border))]"></div>
-              <span className="text-[11px] font-medium text-[hsl(var(--primary))] flex items-center gap-1">
-                <Info size={12} /> Active: {activeModel || "—"} ({activeReasoning || "—"})
+    <div className="flex h-screen w-full flex-col font-sans bg-[hsl(var(--background))] text-[hsl(var(--foreground))] overflow-hidden gap-5" style={{ padding: '32px' }}>
+        {update && (
+          <div className="shrink-0 flex items-center gap-3 rounded-xl border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/10 px-4 py-2.5">
+            <Download size={14} className="text-[hsl(var(--primary))] shrink-0" />
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-semibold">
+                Update available: v{update.latest_version}
               </span>
+              <span className="text-[11px] text-[hsl(var(--muted-foreground))] ml-2">
+                (current v{update.current_version})
+              </span>
+              {update.notes && (
+                <div className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">{update.notes}</div>
+              )}
+            </div>
+            {update.download_url && (
+              <button
+                onClick={async () => {
+                  if (!update.download_url) return;
+                  setInstalling(true);
+                  try {
+                    await installUpdate(update.download_url);
+                  } catch (e) {
+                    setInstalling(false);
+                    showToast({ type: "error", message: typeof e === "string" ? e : String(e) });
+                  }
+                }}
+                disabled={installing}
+                className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[hsl(var(--primary))] px-3 py-1.5 text-[11px] font-bold text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-60"
+              >
+                {installing ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+                {installing ? "Installing..." : "Update now"}
+              </button>
+            )}
+            <button
+              onClick={() => setUpdate(null)}
+              title="Dismiss"
+              className="shrink-0 flex h-6 w-6 items-center justify-center rounded-md hover:bg-[hsl(var(--muted))]"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
+
+        {/* 1. Header Row */}
+        <header className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[hsl(var(--primary))] to-blue-500 text-white shadow-md">
+              <Cpu size={20} />
+            </div>
+            <div>
+              <h1 className="text-base font-bold tracking-tight text-[hsl(var(--foreground))] leading-tight">Codex Switcher</h1>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">9Router Control</span>
+                <div className="w-1 h-1 rounded-full bg-[hsl(var(--border))]"></div>
+                <span className="text-[11px] font-medium text-[hsl(var(--primary))] flex items-center gap-1">
+                  <Info size={12} /> Active: {activeModel || "—"} ({activeReasoning || "—"})
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-        <ThemeToggle theme={theme} onToggle={toggleTheme} />
-      </header>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </header>
 
-      {/* 2. Main Dashboard Layout (2 Columns) */}
-      <div className="custom-scrollbar flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-1.5 pb-1">
-        <div className="grid grid-cols-2 gap-5 items-start">
-          
-          {/* LEFT COLUMN: Model Switcher (7 cols) */}
-          <div className="min-w-0 flex flex-col gap-5">
-            <section className="flex flex-col bg-[hsl(var(--muted))]/10 border border-[hsl(var(--border))]/40 rounded-2xl p-6 gap-6 h-full">
-              {/* Target Model Area */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between h-6">
-                  <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                    Target Model
-                    {selectedModel !== activeModel && <span className="size-1.5 rounded-full bg-[hsl(var(--primary))] animate-pulse"></span>}
-                  </label>
-                  <span className="text-[10px] font-medium bg-[hsl(var(--muted))]/60 px-2 py-0.5 rounded text-[hsl(var(--foreground))]">{models.length} available</span>
+        {/* 2. Main Dashboard Layout (2 Columns) */}
+        <div className="custom-scrollbar flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-1.5 pb-1">
+          <div className="grid grid-cols-2 gap-5 items-start">
+
+            {/* LEFT COLUMN: Model Switcher (7 cols) */}
+            <div className="min-w-0 flex flex-col gap-5">
+              <section className="flex flex-col bg-[hsl(var(--muted))]/10 border border-[hsl(var(--border))]/40 rounded-2xl p-6 gap-6 h-full">
+                {/* Target Model Area */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between h-6">
+                    <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                      Target Model
+                      {selectedModel !== activeModel && <span className="size-1.5 rounded-full bg-[hsl(var(--primary))] animate-pulse"></span>}
+                    </label>
+                    <span className="text-[10px] font-medium bg-[hsl(var(--muted))]/60 px-2 py-0.5 rounded text-[hsl(var(--foreground))]">{models.length} available</span>
+                  </div>
+                  <ModelSelect models={models} value={selectedModel} onChange={setSelectedModel} disabled={!routerLive} effortByModel={effortByModel} />
                 </div>
-                <ModelSelect models={models} value={selectedModel} onChange={setSelectedModel} disabled={!routerLive} effortByModel={effortByModel} />
-              </div>
 
-              {/* Reasoning Effort Area */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center h-6">
-                  <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                    Reasoning Effort
-                    {selectedReasoning !== activeReasoning && <span className="size-1.5 rounded-full bg-[hsl(var(--primary))] animate-pulse"></span>}
-                  </label>
+                {/* Reasoning Effort Area */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center h-6">
+                    <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                      Reasoning Effort
+                      {selectedReasoning !== activeReasoning && <span className="size-1.5 rounded-full bg-[hsl(var(--primary))] animate-pulse"></span>}
+                    </label>
+                  </div>
+                  <ReasoningSelect value={selectedReasoning} onChange={setSelectedReasoning} />
                 </div>
-                <ReasoningSelect value={selectedReasoning} onChange={setSelectedReasoning} />
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 mt-auto">
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  title="Refresh Models"
-                  className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[hsl(var(--border))]/80",
-                    "bg-[hsl(var(--background))]/50 text-[hsl(var(--foreground))]",
-                    "transition-colors hover:bg-[hsl(var(--muted))] disabled:opacity-50"
-                  )}
-                >
-                  <RefreshCw size={16} className={cn(refreshing && "animate-spin")} />
-                </button>
-                <button
-                  onClick={handleApply}
-                  disabled={applying || !selectedModel || configState === "loading" || ( !isDirty && activeModel !== "")}
-                  className={cn(
-                    "flex flex-1 items-center justify-center gap-2 rounded-xl",
-                    "h-10 text-xs font-bold shadow-md transition-all",
-                    isDirty 
-                      ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:scale-[1.02] active:scale-[0.98]" 
-                      : "bg-[hsl(var(--muted))]/60 text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))]/60",
-                    "disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
-                  )}
-                >
-                  {applying ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} 
-                  {isDirty ? "Apply Changes" : "Applied"}
-                </button>
-              </div>
-            </section>
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4 mt-auto">
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    title="Refresh Models"
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[hsl(var(--border))]/80",
+                      "bg-[hsl(var(--background))]/50 text-[hsl(var(--foreground))]",
+                      "transition-colors hover:bg-[hsl(var(--muted))] disabled:opacity-50"
+                    )}
+                  >
+                    <RefreshCw size={16} className={cn(refreshing && "animate-spin")} />
+                  </button>
+                  <button
+                    onClick={handleApply}
+                    disabled={applying || !selectedModel || configState === "loading" || (!isDirty && activeModel !== "")}
+                    className={cn(
+                      "flex flex-1 items-center justify-center gap-2 rounded-xl",
+                      "h-10 text-xs font-bold shadow-md transition-all",
+                      isDirty
+                        ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:scale-[1.02] active:scale-[0.98]"
+                        : "bg-[hsl(var(--muted))]/60 text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))]/60",
+                      "disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                    )}
+                  >
+                    {applying ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    {isDirty ? "Apply Changes" : "Applied"}
+                  </button>
+                </div>
+              </section>
+            </div>
+
+            {/* RIGHT COLUMN: Router Control & Quota Tracker (5 cols) */}
+            <div className="min-w-0 flex flex-col gap-5 h-full overflow-y-auto pr-2 custom-scrollbar">
+              <section className="shrink-0">
+                <RouterControl baseUrl={baseUrl} onStatusChange={handleRouterStatus} />
+              </section>
+
+              <section className="shrink-0">
+                <QuotaPanel />
+              </section>
+            </div>
+
           </div>
+        </div>
 
-          {/* RIGHT COLUMN: Router Control & Quota Tracker (5 cols) */}
-          <div className="min-w-0 flex flex-col gap-5">
-            <section className="shrink-0">
-              <RouterControl baseUrl={baseUrl} onStatusChange={handleRouterStatus} />
-            </section>
-            
-            <section className="shrink-0">
-              <QuotaPanel />
-            </section>
+        {/* 5. Footer */}
+        <div className="shrink-0 flex items-center justify-between">
+          <StatusBar items={statusItems} />
+          <span className="text-[10px] font-mono text-[hsl(var(--muted-foreground))] opacity-50">v{__APP_VERSION__}</span>
+        </div>
+
+        {toast && (
+          <div className={cn(
+            "fixed top-6 right-6 animate-in slide-in-from-right-4 fade-in-90 rounded-xl px-5 py-3 text-sm font-semibold shadow-2xl border z-50",
+            toast.type === "success" ? "bg-[hsl(var(--success))]/95 text-white border-[hsl(var(--success))]" :
+              toast.type === "info" ? "bg-[hsl(var(--card))]/95 text-[hsl(var(--foreground))] border-[hsl(var(--border))]" :
+                "bg-[hsl(var(--destructive))]/95 text-white border-[hsl(var(--destructive))]"
+          )}>
+            {toast.message}
           </div>
-
-        </div>
-      </div>
-
-      {/* 5. Footer */}
-      <div className="shrink-0 flex items-center justify-between">
-        <StatusBar items={statusItems} />
-        <span className="text-[10px] font-mono text-[hsl(var(--muted-foreground))] opacity-50">v{__APP_VERSION__}</span>
-      </div>
-
-      {toast && (
-        <div className={cn(
-          "fixed top-6 right-6 animate-in slide-in-from-right-4 fade-in-90 rounded-xl px-5 py-3 text-sm font-semibold shadow-2xl border z-50",
-          toast.type === "success" ? "bg-[hsl(var(--success))]/95 text-white border-[hsl(var(--success))]" : 
-          toast.type === "info" ? "bg-[hsl(var(--card))]/95 text-[hsl(var(--foreground))] border-[hsl(var(--border))]" : 
-          "bg-[hsl(var(--destructive))]/95 text-white border-[hsl(var(--destructive))]"
-        )}>
-          {toast.message}
-        </div>
-      )}
+        )}
     </div>
   );
 }

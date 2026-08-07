@@ -20,12 +20,12 @@ interface RouterControlProps {
 }
 
 const STATUS_META: Record<RouterStatus, { dot: string; label: string; text: string; pulse?: boolean }> = {
-  unknown:  { dot: "bg-[hsl(var(--muted-foreground))]",  label: "Unknown",          text: "text-[hsl(var(--muted-foreground))]" },
-  starting: { dot: "bg-yellow-500",                       label: "Starting...",       text: "text-yellow-500", pulse: true },
-  running:  { dot: "bg-[hsl(var(--success))]",            label: "Running",          text: "text-[hsl(var(--success))]" },
-  stopping: { dot: "bg-yellow-500",                       label: "Stopping...",       text: "text-yellow-500", pulse: true },
-  offline:  { dot: "bg-[hsl(var(--destructive))]",        label: "Offline",          text: "text-[hsl(var(--destructive))]" },
-  error:    { dot: "bg-[hsl(var(--destructive))]",        label: "Error",            text: "text-[hsl(var(--destructive))]" },
+  unknown: { dot: "bg-[hsl(var(--muted-foreground))]", label: "Unknown", text: "text-[hsl(var(--muted-foreground))]" },
+  starting: { dot: "bg-yellow-500", label: "Starting...", text: "text-yellow-500", pulse: true },
+  running: { dot: "bg-[hsl(var(--success))]", label: "Running", text: "text-[hsl(var(--success))]" },
+  stopping: { dot: "bg-yellow-500", label: "Stopping...", text: "text-yellow-500", pulse: true },
+  offline: { dot: "bg-[hsl(var(--destructive))]", label: "Offline", text: "text-[hsl(var(--destructive))]" },
+  error: { dot: "bg-[hsl(var(--destructive))]", label: "Error", text: "text-[hsl(var(--destructive))]" },
 };
 
 function Switch({ checked, onChange }: { checked: boolean; onChange: (c: boolean) => void }) {
@@ -74,7 +74,7 @@ export function RouterControl({ baseUrl, onStatusChange }: RouterControlProps) {
 
   useEffect(() => {
     let cancelled = false;
-    loadRouterSettings().then(s => { if (!cancelled) setSettings(s); }).catch(() => {});
+    loadRouterSettings().then(s => { if (!cancelled) setSettings(s); }).catch(() => { });
     return () => { cancelled = true; };
   }, []);
 
@@ -118,7 +118,7 @@ export function RouterControl({ baseUrl, onStatusChange }: RouterControlProps) {
 
   const handleStop = useCallback(async () => {
     setBusy("stop"); setStatusAndNotify("stopping");
-    try { await stopRouter(baseUrl); setStatusAndNotify("offline"); } 
+    try { await stopRouter(baseUrl); setStatusAndNotify("offline"); }
     catch { setStatusAndNotify("error"); } finally { setBusy(null); }
   }, [baseUrl, setStatusAndNotify]);
 
@@ -140,11 +140,11 @@ export function RouterControl({ baseUrl, onStatusChange }: RouterControlProps) {
   return (
     <div className="flex flex-col gap-4">
       {/* Horizontal Layout for Services Row */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[hsl(var(--muted))]/10 border border-[hsl(var(--border))]/40 px-6 py-4 shadow-sm">
-        
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-[hsl(var(--muted))]/10 border border-[hsl(var(--border))]/40 shadow-sm" style={{ padding: '20px 24px' }}>
+
         {/* Left Side: Status and Toggle */}
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span className="relative flex size-2.5">
               {meta.pulse && <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-75", meta.dot)}></span>}
               <span className={cn("relative inline-flex size-2.5 rounded-full", meta.dot)}></span>
@@ -159,7 +159,7 @@ export function RouterControl({ baseUrl, onStatusChange }: RouterControlProps) {
             Auto-start with app
           </label>
         </div>
-        
+
         {/* Right Side: Action Buttons */}
         <div className="flex gap-2">
           <button
