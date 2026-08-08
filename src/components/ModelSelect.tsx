@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ChevronDown, Star, X, Search } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useClickOutside } from "../hooks/useClickOutside";
 
 interface ModelSelectProps {
   models: string[];
@@ -36,20 +37,27 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
     setFavorites(next);
   };
 
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setIsOpen(false), []);
+
+  useClickOutside(containerRef, close);
+
   return (
     <div className="flex flex-col gap-3">
-      {/* Search Input - Using inline style paddingLeft to guarantee it works! */}
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16} />
         <input
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setIsOpen(true);
+          }}
           disabled={disabled || models.length === 0}
           placeholder="Filter models..."
-          style={{ paddingLeft: "40px" }}
           className={cn(
             "h-10 w-full rounded-xl border border-[hsl(var(--border))]/80 bg-[hsl(var(--input))]/40",
-            "pr-8 text-sm text-[hsl(var(--foreground))] outline-none transition-colors",
+            "pl-10 pr-8 text-sm text-[hsl(var(--foreground))] outline-none transition-colors",
             "placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))]/60 focus:ring-1 focus:ring-[hsl(var(--primary))]/20",
             "disabled:opacity-50 disabled:cursor-not-allowed"
           )}
@@ -65,31 +73,16 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
       </div>
 
       <div className="flex gap-3">
-        <div className="relative min-w-0 flex-1">
-          <select
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            disabled={disabled || filtered.length === 0}
-            className="peer absolute inset-0 h-full w-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10 outline-none appearance-none border-none bg-[hsl(var(--card))] text-[hsl(var(--foreground))]"
-          >
-            <option value="" disabled hidden>Select a model</option>
-            {filtered.map((model) => {
-              const eff = effortByModel?.[model];
-              return (
-                <option key={model} value={model}>
-                  {eff ? `${model} (${eff})` : model}
-                </option>
-              );
-            })}
-          </select>
-
+        <div className="relative min-w-0 flex-1" ref={containerRef}>
           <div 
-            style={{ paddingLeft: "20px", paddingRight: "56px" }}
+            onClick={() => { if (!disabled) setIsOpen(!isOpen); }}
             className={cn(
-            "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-[hsl(var(--border))]/80 bg-[hsl(var(--input))]/60",
+            "flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-[hsl(var(--border))]/80 bg-[hsl(var(--input))]/60",
+            "pl-5 pr-14",
             "text-sm font-semibold text-[hsl(var(--foreground))] transition-colors",
-            "peer-focus:border-[hsl(var(--primary))]/60 peer-focus:ring-1 peer-focus:ring-[hsl(var(--primary))]/20",
-            (disabled || filtered.length === 0) ? "opacity-50" : ""
+            "hover:border-[hsl(var(--primary))]/60 hover:ring-1 hover:ring-[hsl(var(--primary))]/20",
+            isOpen && "border-[hsl(var(--primary))]/60 ring-1 ring-[hsl(var(--primary))]/20",
+            disabled ? "opacity-50 cursor-not-allowed" : ""
           )}>
             <span className="truncate">
               {value || "Select a model"}
@@ -99,8 +92,50 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
                 {activeEffort}
               </span>
             )}
+            <ChevronDown 
+              className={cn("pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] transition-transform", isOpen && "rotate-180")} 
+              size={16} 
+            />
           </div>
-          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] z-0" size={16} />
+
+          {isOpen && (
+            <div className="absolute left-0 right-0 top-full mt-2 z-50 overflow-hidden rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl animate-in fade-in-80 slide-in-from-top-2">
+              <div className="max-h-60 overflow-y-auto p-1 custom-scrollbar">
+                {filtered.length === 0 && (
+                  <div className="px-3 py-2 text-sm text-[hsl(var(--muted-foreground))]">
+                    No models found
+                  </div>
+                )}
+                {filtered.map((model) => {
+                  const eff = effortByModel?.[model];
+                  return (
+                    <div
+                      key={model}
+                      onClick={() => {
+                        onChange(model);
+                        setIsOpen(false);
+                      }}
+                      className={cn(
+                        "relative flex cursor-pointer select-none items-center justify-between rounded-lg px-3 py-2.5 text-sm outline-none transition-colors",
+                        "hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]",
+                        value === model ? "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] font-semibold" : "text-[hsl(var(--foreground))]"
+                      )}
+                    >
+                      <span className="truncate">{model}</span>
+                      {eff && (
+                        <span className={cn(
+                          "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                          value === model ? "bg-[hsl(var(--primary))]/20 text-[hsl(var(--primary))]" : "bg-[hsl(var(--muted))]/80 text-[hsl(var(--muted-foreground))]"
+                        )}>
+                          {eff}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         <button
           onClick={toggleFavorite}

@@ -46,7 +46,7 @@ function MiniBar({ value, max, showPercent, isRemaining }: { value: number; max:
         />
       </div>
       {showPercent && (
-        <span className="text-[9px] font-mono text-[hsl(var(--muted-foreground))]">{pct.toFixed(0)}%</span>
+        <span className="text-[13px] font-mono text-[hsl(var(--muted-foreground))]">{pct.toFixed(0)}%</span>
       )}
     </div>
   );
@@ -73,21 +73,20 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const maxDailyCalls = report?.daily.reduce((m, d) => Math.max(m, d.calls), 0) ?? 1;
 
   return (
-    <div className={cn("rounded-xl border border-[hsl(var(--border))]/50 bg-[hsl(var(--muted))]/5 p-3", className)}>
+    <div className={cn("rounded-xl border border-[hsl(var(--border))]/50 bg-[hsl(var(--muted))]/5", className)} style={{ padding: '24px' }}>
       {/* Header row */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <BarChart2 size={13} className="text-[hsl(var(--primary))]" />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+          <span className="text-[13px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
             Actual Usage (DB)
           </span>
         </div>
         <div className="flex items-center gap-2">
           {report && (
-            <span className="text-[10px] font-mono text-[hsl(var(--muted-foreground))]">
+            <span className="text-[12px] font-mono text-[hsl(var(--muted-foreground))]">
               {report.report_date}
             </span>
           )}
@@ -110,7 +109,7 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
       </div>
 
       {error && (
-        <div className="text-[10px] text-[hsl(var(--destructive))] font-mono mb-2">{error}</div>
+        <div className="text-[12px] text-[hsl(var(--destructive))] font-mono mb-2">{error}</div>
       )}
 
       {report && (
@@ -118,123 +117,100 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-2 mb-2">
             <div className="flex flex-col items-center rounded-lg bg-[hsl(var(--muted))]/30 p-2">
-              <span className="text-[10px] font-medium text-[hsl(var(--muted-foreground))]">Total Calls</span>
+              <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">Total Calls</span>
               <span className="text-sm font-bold tabular-nums">{fmt(report.grand_total_calls)}</span>
             </div>
             <div className="flex flex-col items-center rounded-lg bg-[hsl(var(--muted))]/30 p-2">
-              <span className="text-[10px] font-medium text-[hsl(var(--muted-foreground))]">Total Cost</span>
+              <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">Total Cost</span>
               <span className="text-sm font-bold tabular-nums">{fmtCost(report.grand_total_cost)}</span>
             </div>
             <div className="flex flex-col items-center rounded-lg bg-[hsl(var(--muted))]/30 p-2">
-              <span className="text-[10px] font-medium text-[hsl(var(--muted-foreground))]">Total Tokens</span>
+              <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">Total Tokens</span>
               <span className="text-sm font-bold tabular-nums">{fmt(report.grand_total_tokens)}</span>
             </div>
           </div>
 
-          {report.quotas.length > 0 && (
-            <div className="space-y-1.5 mb-2">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]/60">
-                Remaining Quota
-              </span>
-              {report.quotas.map(quota => (
-                <div key={quota.connection_id} className="rounded-md px-2 py-1.5 bg-[hsl(var(--muted))]/20 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[11px] font-medium truncate">{quota.connection_name}</div>
-                      <div className="text-[9px] text-[hsl(var(--muted-foreground))]">
-                        {quota.plan_type} · {quota.is_active ? "active" : "inactive"}
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-4 pr-1">
+            {report.quotas.length > 0 && (
+              <div className="space-y-1.5 mb-2">
+                <span className="text-[13px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]/60">
+                  Remaining Quota
+                </span>
+                {report.quotas.map(quota => (
+                  <div key={quota.connection_id} className="rounded-md px-2 py-1.5 bg-[hsl(var(--muted))]/20 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px] font-medium truncate">{quota.connection_name}</div>
+                        <div className="text-[13px] text-[hsl(var(--muted-foreground))]">
+                          {quota.plan_type} • {quota.is_active ? "active" : "inactive"}
+                        </div>
                       </div>
+                      {quota.primary_window && (
+                        <span className="shrink-0 text-[12px] font-bold text-[hsl(var(--success))] tabular-nums">
+                          {quota.primary_window.remaining_percent.toFixed(0)}% left
+                        </span>
+                      )}
                     </div>
                     {quota.primary_window && (
-                      <span className="shrink-0 text-[10px] font-bold text-[hsl(var(--success))] tabular-nums">
-                        {quota.primary_window.remaining_percent.toFixed(0)}% left
-                      </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="shrink-0 text-[13px] w-12 text-[hsl(var(--muted-foreground))]">Session</span>
+                        <MiniBar value={quota.primary_window.remaining_percent} max={100} showPercent isRemaining />
+                        <span className="shrink-0 text-[13px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums">
+                          {fmtReset(quota.primary_window.reset_after_seconds, quota.primary_window.reset_at)}
+                        </span>
+                      </div>
                     )}
-                  </div>
-                  {quota.primary_window && (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="shrink-0 text-[9px] w-12 text-[hsl(var(--muted-foreground))]">Session</span>
-                      <MiniBar value={quota.primary_window.remaining_percent} max={100} showPercent isRemaining />
-                      <span className="shrink-0 text-[9px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums">
-                        {fmtReset(quota.primary_window.reset_after_seconds, quota.primary_window.reset_at)}
-                      </span>
-                    </div>
-                  )}
-                  {quota.secondary_window && (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="shrink-0 text-[9px] w-12 text-[hsl(var(--muted-foreground))]">Secondary</span>
-                      <MiniBar value={quota.secondary_window.remaining_percent} max={100} showPercent isRemaining />
-                      <span className="shrink-0 text-[9px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums">
-                        {fmtReset(quota.secondary_window.reset_after_seconds, quota.secondary_window.reset_at)}
-                      </span>
-                    </div>
-                  )}
-                  {quota.error && (
-                    <div className="text-[9px] text-[hsl(var(--destructive))] truncate" title={quota.error}>
-                      {quota.error}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Per-provider summary */}
-          {report.providers.length > 0 && (
-            <div className="space-y-1 mb-2">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]/60">
-                Connections
-              </span>
-              {report.providers.map(p => (
-                <div key={p.connection_id} className="flex items-center justify-between rounded-md px-2 py-1 bg-[hsl(var(--muted))]/20">
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-[11px] font-medium truncate">
-                      {p.connection_name || p.connection_id.slice(0, 8)}
-                    </span>
-                    <span className="text-[9px] text-[hsl(var(--muted-foreground))]">
-                      {p.plan_type} · {p.days_active}d active
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end shrink-0">
-                    <span className="text-[10px] font-bold tabular-nums">{fmt(p.total_calls)} calls</span>
-                    <span className="text-[9px] font-mono text-[hsl(var(--primary))]">
-                      Spent: {fmtCost(p.total_cost)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Expanded: daily usage chart */}
-          {expanded && report.daily.length > 0 && (
-            <div className="mt-2">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]/60">
-                Last {report.daily.length} days
-              </span>
-              <div className="mt-1 space-y-0.5 max-h-32 overflow-y-auto">
-                {report.daily.map(d => (
-                  <div key={d.date} className="flex items-center gap-2 rounded px-1.5 py-0.5 hover:bg-[hsl(var(--muted))]/20">
-                    <span className="text-[9px] font-mono w-20 shrink-0 text-[hsl(var(--muted-foreground))]">
-                      {d.date}
-                    </span>
-                    <MiniBar value={d.calls} max={maxDailyCalls} />
-                    <span className="text-[9px] tabular-nums w-12 text-right shrink-0">
-                      {fmt(d.calls)}c
-                    </span>
-                    <span className="text-[9px] tabular-nums w-16 text-right shrink-0">
-                      {fmt(d.total_tokens)}t
-                    </span>
+                    {quota.secondary_window && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="shrink-0 text-[13px] w-12 text-[hsl(var(--muted-foreground))]">Secondary</span>
+                        <MiniBar value={quota.secondary_window.remaining_percent} max={100} showPercent isRemaining />
+                        <span className="shrink-0 text-[13px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums">
+                          {fmtReset(quota.secondary_window.reset_after_seconds, quota.secondary_window.reset_at)}
+                        </span>
+                      </div>
+                    )}
+                    {quota.error && (
+                      <div className="text-[13px] text-[hsl(var(--destructive))] truncate" title={quota.error}>
+                        {quota.error}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Per-provider summary */}
+            {expanded && report.providers.length > 0 && (
+              <div className="space-y-1 mb-2">
+                <span className="text-[13px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]/60">
+                  Connections
+                </span>
+                {report.providers.map(p => (
+                  <div key={p.connection_id} className="flex items-center justify-between rounded-md px-2 py-1 bg-[hsl(var(--muted))]/20">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-[13px] font-medium truncate">
+                        {p.connection_name || p.connection_id.slice(0, 8)}
+                      </span>
+                      <span className="text-[13px] text-[hsl(var(--muted-foreground))]">
+                        {p.plan_type} • {p.days_active}d active
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-end shrink-0">
+                      <span className="text-[12px] font-bold tabular-nums">{fmt(p.total_calls)} calls</span>
+                      <span className="text-[13px] font-mono text-[hsl(var(--primary))]">
+                        Spent: {fmtCost(p.total_cost)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </>
       )}
 
       {!report && !error && !loading && (
-        <div className="text-[10px] text-[hsl(var(--muted-foreground))] text-center py-2">
+        <div className="text-[12px] text-[hsl(var(--muted-foreground))] text-center py-2">
           Loading usage data...
         </div>
       )}
