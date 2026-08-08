@@ -1,13 +1,12 @@
 use std::io::Write as IoWrite;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 
 // ─── Shared process handle ────────────────────────────────────────────────────
 
-static ROUTER_CHILD: Mutex<Option<Child>> = Mutex::new(None);
 static ROUTER_PID: Mutex<Option<u32>> = Mutex::new(None);
 
 // ─── Config types ─────────────────────────────────────────────────────────────
@@ -383,32 +382,37 @@ pub fn set_primary_model(combo_name: String, model: String, reasoning_effort: Op
 
 #[tauri::command]
 pub fn load_router_settings() -> RouterSettings {
+    let defaults = RouterSettings::default();
     if let Ok(doc) = read_switch_document() {
         let auto_start = doc
             .get("auto_start")
             .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+            .unwrap_or(defaults.auto_start);
         let startup_command = doc
             .get("startup_command")
             .and_then(|v| v.as_str())
-            .unwrap_or("9router")
+            .unwrap_or(&defaults.startup_command)
             .to_string();
         let health_check_interval = doc
             .get("health_check_interval")
             .and_then(|v| v.as_integer())
-            .unwrap_or(5) as u64;
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(defaults.health_check_interval);
         let startup_timeout = doc
             .get("startup_timeout")
             .and_then(|v| v.as_integer())
-            .unwrap_or(6) as u64;
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(defaults.startup_timeout);
         let health_timeout = doc
             .get("health_timeout")
             .and_then(|v| v.as_integer())
-            .unwrap_or(3) as u64;
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(defaults.health_timeout);
         let retry_delay = doc
             .get("retry_delay")
             .and_then(|v| v.as_integer())
-            .unwrap_or(500) as u64;
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(defaults.retry_delay);
 
         return RouterSettings {
             auto_start,
@@ -790,6 +794,23 @@ pub fn get_quota() -> Result<QuotaReport, String> {
     get_quota_report()
 }
 
+#[tauri::command]
+pub fn set_connection_active(connection_id: String, active: bool) -> Result<(), String> {
+    let db_path = get_9router_db_path()?;
+    let conn = rusqlite::Connection::open(&db_path)
+        .map_err(|e| format!("Unable to open 9Router DB: {e}"))?;
+    let changed = conn
+        .execute(
+            "UPDATE providerConnections SET isActive = ?1 WHERE id = ?2 AND provider = 'codex'",
+            rusqlite::params![if active { 1 } else { 0 }, connection_id],
+        )
+        .map_err(|e| format!("Unable to update connection: {e}"))?;
+    if changed == 0 {
+        return Err("Codex connection not found".to_string());
+    }
+    Ok(())
+}
+
 // ─── Update check ─────────────────────────────────────────────────────────────
 
 /// Compares dotted numeric versions, so 0.10.0 counts as newer than 0.9.3.
@@ -1069,19 +1090,8 @@ pub async fn start_router(
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
 
-    let child = cmd.spawn();
-
-    match child {
-        Ok(c) => {
-            if let Ok(mut guard) = ROUTER_CHILD.lock() {
-                *guard = Some(c);
-            }
-            if let Ok(mut pid_guard) = ROUTER_PID.lock() {
-                if let Some(child) = ROUTER_CHILD.lock().ok().and_then(|mut g| g.take()) {
-                    *pid_guard = Some(child.id());
-                }
-            }
-        }
+    match cmd.spawn() {
+        Ok(_) => {}
         Err(e) => {
             return Err(format!("Unable to start 9Router: {e}"));
         }
@@ -1095,11 +1105,12 @@ pub async fn start_router(
     for _ in 0..iterations {
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         if check_router_status(base_url.clone(), Some(health_timeout)).await {
-            if let Ok(pid_guard) = ROUTER_PID.lock() {
-                if let Some(pid) = *pid_guard {
-                    let _ = write_log(&format!("Router Running (pid {pid})"));
-                    return Ok("started".to_string());
+            if let Ok(pid) = find_pid_by_port(port) {
+                if let Ok(mut pid_guard) = ROUTER_PID.lock() {
+                    *pid_guard = Some(pid);
                 }
+                let _ = write_log(&format!("Router Running (pid {pid})"));
+                return Ok("started".to_string());
             }
             let _ = write_log("Router Running");
             return Ok("started".to_string());
@@ -1116,19 +1127,6 @@ pub async fn start_router(
 
 #[tauri::command]
 pub fn stop_router(base_url: String) -> Result<(), String> {
-    if let Ok(mut guard) = ROUTER_CHILD.lock() {
-        if let Some(mut child) = guard.take() {
-            let pid = child.id();
-            let _ = child.kill();
-            let _ = child.wait();
-            if let Ok(mut pid_guard) = ROUTER_PID.lock() {
-                *pid_guard = None;
-            }
-            let _ = write_log(&format!("Router Stopped (pid {pid})"));
-            return Ok(());
-        }
-    }
-
     let stored_pid = ROUTER_PID.lock().ok().and_then(|g| *g);
     if let Some(pid) = stored_pid {
         let result = kill_pid(pid);

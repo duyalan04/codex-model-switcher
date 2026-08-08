@@ -167,6 +167,13 @@ export async function getQuota(): Promise<QuotaReport> {
   return invoke<QuotaReport>("get_quota");
 }
 
+export async function setConnectionActive(
+  connectionId: string,
+  active: boolean
+): Promise<void> {
+  return invoke<void>("set_connection_active", { connectionId, active });
+}
+
 export interface UpdateInfo {
   current_version: string;
   latest_version: string;

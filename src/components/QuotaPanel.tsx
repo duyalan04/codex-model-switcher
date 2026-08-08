@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, BarChart2, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "../lib/utils";
-import { getQuota, QuotaReport } from "../services/router";
+import { getQuota, QuotaReport, setConnectionActive } from "../services/router";
 
 interface QuotaPanelProps {
   className?: string;
@@ -57,6 +57,7 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +73,19 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  const toggleConnection = useCallback(async (connectionId: string, active: boolean) => {
+    setTogglingId(connectionId);
+    setError(null);
+    try {
+      await setConnectionActive(connectionId, active);
+      await load();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setTogglingId(null);
+    }
+  }, [load]);
 
 
   return (
@@ -145,11 +159,30 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
                           {quota.plan_type} • {quota.is_active ? "active" : "inactive"}
                         </div>
                       </div>
-                      {quota.primary_window && (
-                        <span className="shrink-0 text-[12px] font-bold text-[hsl(var(--success))] tabular-nums">
-                          {quota.primary_window.remaining_percent.toFixed(0)}% left
-                        </span>
-                      )}
+                      <div className="flex shrink-0 items-center gap-2">
+                        {quota.primary_window && (
+                          <span className="text-[12px] font-bold text-[hsl(var(--success))] tabular-nums">
+                            {quota.primary_window.remaining_percent.toFixed(0)}% left
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={quota.is_active}
+                          disabled={togglingId === quota.connection_id}
+                          onClick={() => void toggleConnection(quota.connection_id, !quota.is_active)}
+                          className={cn(
+                            "relative h-5 w-9 rounded-full transition-colors disabled:opacity-50",
+                            quota.is_active ? "bg-[hsl(var(--primary))]" : "bg-[hsl(var(--muted))]"
+                          )}
+                          title={quota.is_active ? "Turn off account" : "Turn on account"}
+                        >
+                          <span className={cn(
+                            "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform",
+                            quota.is_active ? "translate-x-4" : "translate-x-0.5"
+                          )} />
+                        </button>
+                      </div>
                     </div>
                     {quota.primary_window && (
                       <div className="flex items-center justify-between gap-2">

@@ -1,11 +1,12 @@
 {
   "name": "codex-model-switcher",
   "private": true,
-  "version": "0.2.6",
+  "version": "0.2.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "check": "npm run build && cargo test --manifest-path src-tauri/Cargo.toml && cargo clippy --manifest-path src-tauri/Cargo.toml --lib --all-targets -- -D warnings",
     "preview": "vite preview",
     "tauri": "tauri"
   },

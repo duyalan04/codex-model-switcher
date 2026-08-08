@@ -19,6 +19,7 @@ pub fn run() {
             codex_model_switcher_lib::load_router_settings,
             codex_model_switcher_lib::save_router_settings,
             codex_model_switcher_lib::get_quota,
+            codex_model_switcher_lib::set_connection_active,
             codex_model_switcher_lib::check_update,
             codex_model_switcher_lib::install_update,
         ])
