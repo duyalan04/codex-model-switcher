@@ -57,10 +57,11 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
           placeholder="Filter models..."
           className={cn(
             "h-10 w-full rounded-xl border border-[hsl(var(--border))]/80 bg-[hsl(var(--input))]/40",
-            "pl-10 pr-8 text-sm text-[hsl(var(--foreground))] outline-none transition-colors",
+            "text-sm text-[hsl(var(--foreground))] outline-none transition-colors",
             "placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))]/60 focus:ring-1 focus:ring-[hsl(var(--primary))]/20",
             "disabled:opacity-50 disabled:cursor-not-allowed"
           )}
+          style={{ paddingLeft: '40px', paddingRight: '32px' }}
         />
         {search && (
           <button
@@ -78,12 +79,12 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
             onClick={() => { if (!disabled) setIsOpen(!isOpen); }}
             className={cn(
             "flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-[hsl(var(--border))]/80 bg-[hsl(var(--input))]/60",
-            "pl-5 pr-14",
             "text-sm font-semibold text-[hsl(var(--foreground))] transition-colors",
             "hover:border-[hsl(var(--primary))]/60 hover:ring-1 hover:ring-[hsl(var(--primary))]/20",
             isOpen && "border-[hsl(var(--primary))]/60 ring-1 ring-[hsl(var(--primary))]/20",
             disabled ? "opacity-50 cursor-not-allowed" : ""
-          )}>
+          )}
+          style={{ paddingLeft: '20px', paddingRight: '56px' }}>
             <span className="truncate">
               {value || "Select a model"}
             </span>
@@ -100,7 +101,7 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
 
           {isOpen && (
             <div className="absolute left-0 right-0 top-full mt-2 z-50 overflow-hidden rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl animate-in fade-in-80 slide-in-from-top-2">
-              <div className="max-h-60 overflow-y-auto p-1 custom-scrollbar">
+              <div className="max-h-60 overflow-y-auto custom-scrollbar" style={{ padding: '4px' }}>
                 {filtered.length === 0 && (
                   <div className="px-3 py-2 text-sm text-[hsl(var(--muted-foreground))]">
                     No models found
@@ -116,17 +117,19 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
                         setIsOpen(false);
                       }}
                       className={cn(
-                        "relative flex cursor-pointer select-none items-center justify-between rounded-lg px-3 py-2.5 text-sm outline-none transition-colors",
+                        "relative flex cursor-pointer select-none items-center justify-between rounded-lg text-sm outline-none transition-colors",
                         "hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]",
                         value === model ? "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] font-semibold" : "text-[hsl(var(--foreground))]"
                       )}
+                      style={{ padding: '10px 12px' }}
                     >
                       <span className="truncate">{model}</span>
                       {eff && (
                         <span className={cn(
-                          "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                          "shrink-0 rounded-md text-[10px] font-bold uppercase tracking-wide",
                           value === model ? "bg-[hsl(var(--primary))]/20 text-[hsl(var(--primary))]" : "bg-[hsl(var(--muted))]/80 text-[hsl(var(--muted-foreground))]"
-                        )}>
+                        )}
+                        style={{ padding: '2px 6px' }}>
                           {eff}
                         </span>
                       )}
