@@ -77,15 +77,22 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
   const toggleConnection = useCallback(async (connectionId: string, active: boolean) => {
     setTogglingId(connectionId);
     setError(null);
+    setReport(current => current && {
+      ...current,
+      quotas: current.quotas.map(quota => quota.connection_id === connectionId ? { ...quota, is_active: active } : quota),
+    });
     try {
       await setConnectionActive(connectionId, active);
-      await load();
     } catch (e) {
+      setReport(current => current && {
+        ...current,
+        quotas: current.quotas.map(quota => quota.connection_id === connectionId ? { ...quota, is_active: !active } : quota),
+      });
       setError(String(e));
     } finally {
       setTogglingId(null);
     }
-  }, [load]);
+  }, []);
 
 
   return (
@@ -159,12 +166,7 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
                           {quota.plan_type} • {quota.is_active ? "active" : "inactive"}
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {quota.primary_window && (
-                          <span className="text-[12px] font-bold text-[hsl(var(--success))] tabular-nums">
-                            {quota.primary_window.remaining_percent.toFixed(0)}% left
-                          </span>
-                        )}
+                      <div className="flex shrink-0 items-start pt-1">
                         <button
                           type="button"
                           role="switch"
