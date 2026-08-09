@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useClickOutside } from "../hooks/useClickOutside";
@@ -24,6 +24,15 @@ export function ReasoningSelect({ value, onChange }: ReasoningSelectProps) {
   const close = useCallback(() => setIsOpen(false), []);
 
   useClickOutside(containerRef, close);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [close, isOpen]);
 
   return (
     <div className="relative w-full" ref={containerRef}>

@@ -240,6 +240,25 @@ function App() {
 
   const isDirty = selectedModel !== activeModel || selectedReasoning !== activeReasoning;
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isEditable = target?.matches("input, textarea, select, [contenteditable='true']") ?? false;
+      if (isEditable) return;
+
+      if (event.ctrlKey && event.key.toLowerCase() === "r") {
+        event.preventDefault();
+        if (!refreshing) void handleRefresh();
+      }
+      if (event.ctrlKey && event.key === "Enter") {
+        event.preventDefault();
+        if (!applying && selectedModel && (isDirty || activeModel === "")) void handleApply();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeModel, applying, handleApply, handleRefresh, isDirty, refreshing, selectedModel]);
+
   return (
     <div className="flex h-screen w-full flex-col font-sans bg-[hsl(var(--background))] text-[hsl(var(--foreground))] overflow-hidden gap-5" style={{ padding: '32px' }}>
       {update && (

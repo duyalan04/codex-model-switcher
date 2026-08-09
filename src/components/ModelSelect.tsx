@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Star, X, Search } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useClickOutside } from "../hooks/useClickOutside";
@@ -46,6 +46,15 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
   }, [clearSearch]);
 
   useClickOutside(containerRef, close);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [close, isOpen]);
 
   return (
     <div className="flex flex-col gap-3">
