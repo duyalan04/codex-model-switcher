@@ -107,7 +107,10 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
               {value || "Select a model"}
             </span>
             {activeEffort && (
-              <span className="shrink-0 rounded-md bg-[hsl(var(--primary))]/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[hsl(var(--primary))]">
+              <span 
+                className="shrink-0 rounded-md bg-[hsl(var(--primary))]/15 text-[10px] font-bold uppercase tracking-wide text-[hsl(var(--primary))]"
+                style={{ padding: '2px 6px' }}
+              >
                 {activeEffort}
               </span>
             )}

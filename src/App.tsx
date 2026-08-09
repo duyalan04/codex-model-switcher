@@ -197,6 +197,7 @@ function App() {
         localStorage.setItem("lastActiveEffort", selectedReasoning);
 
         showToast({ type: "success", message: `Applied: ${selectedModel} (${selectedReasoning})` });
+        void handleRefresh();
       } else {
         const changed = await saveConfig(selectedModel, selectedReasoning);
 
@@ -217,7 +218,7 @@ function App() {
     } finally {
       setApplying(false);
     }
-  }, [config, baseUrl, selectedModel, selectedReasoning, combos, showToast]);
+  }, [config, baseUrl, selectedModel, selectedReasoning, combos, showToast, handleRefresh]);
 
   const statusItems = useMemo<StatusItem[]>(() => [
     { key: "config", label: configState === "success" ? "Config OK" : configState === "loading" ? "Loading..." : "Config Error", state: configState },
@@ -409,11 +410,11 @@ function App() {
 
       {toast && (
         <div className={cn(
-          "fixed top-6 right-6 animate-in slide-in-from-right-4 fade-in-90 rounded-xl px-5 py-3 text-sm font-semibold shadow-2xl border z-50",
+          "fixed top-6 right-6 animate-in slide-in-from-right-4 fade-in-90 rounded-xl text-sm font-semibold shadow-2xl border z-50",
           toast.type === "success" ? "bg-[hsl(var(--success))]/95 text-white border-[hsl(var(--success))]" :
             toast.type === "info" ? "bg-[hsl(var(--card))]/95 text-[hsl(var(--foreground))] border-[hsl(var(--border))]" :
               "bg-[hsl(var(--destructive))]/95 text-white border-[hsl(var(--destructive))]"
-        )}>
+        )} style={{ padding: '12px 20px' }}>
           {toast.message}
         </div>
       )}

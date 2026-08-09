@@ -176,10 +176,10 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
                           )}
                           title={quota.is_active ? "Turn off account" : "Turn on account"}
                         >
-                          <span
-                            className="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all duration-200"
-                            style={{ left: quota.is_active ? '18px' : '2px' }}
-                          />
+                          <span className={cn(
+                            "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform",
+                            quota.is_active ? "translate-x-4" : "translate-x-0.5"
+                          )} />
                         </button>
                       </div>
                       <div className="text-[13px] text-[hsl(var(--muted-foreground))]">

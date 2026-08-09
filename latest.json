@@ -1,5 +1,5 @@
 {
-    "version":  "0.3.1",
-    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.3.1_x64-setup.exe",
-    "notes":  "Add local keyboard shortcuts"
+    "version":  "0.3.2",
+    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.3.2_x64-setup.exe",
+    "notes":  "Fix ModelSelect badge padding and auto-refresh effort tags"
 }
