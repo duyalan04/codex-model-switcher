@@ -39,7 +39,11 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
 
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => setIsOpen(false), []);
+  const clearSearch = useCallback(() => setSearch(""), []);
+  const close = useCallback(() => {
+    setIsOpen(false);
+    clearSearch();
+  }, [clearSearch]);
 
   useClickOutside(containerRef, close);
 
@@ -50,8 +54,9 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
         <input
           value={search}
           onChange={(event) => {
-            setSearch(event.target.value);
-            setIsOpen(true);
+            const query = event.target.value;
+            setSearch(query);
+            setIsOpen(query.trim().length > 0);
           }}
           disabled={disabled || models.length === 0}
           placeholder="Filter models..."
@@ -65,7 +70,11 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
         />
         {search && (
           <button
-            onClick={() => setSearch("")}
+            type="button"
+            onClick={() => {
+              clearSearch();
+              setIsOpen(false);
+            }}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
           >
             <X size={16} />
@@ -114,7 +123,7 @@ export function ModelSelect({ models, value, onChange, disabled, effortByModel }
                       key={model}
                       onClick={() => {
                         onChange(model);
-                        setIsOpen(false);
+                        close();
                       }}
                       className={cn(
                         "relative flex cursor-pointer select-none items-center justify-between rounded-lg text-sm outline-none transition-colors",

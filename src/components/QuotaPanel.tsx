@@ -159,14 +159,11 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
                 </span>
                 {report.quotas.map(quota => (
                   <div key={quota.connection_id} className="rounded-md px-2 py-1.5 bg-[hsl(var(--muted))]/20 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[13px] font-medium truncate">{quota.connection_name}</div>
-                        <div className="text-[13px] text-[hsl(var(--muted-foreground))]">
-                          {quota.plan_type} • {quota.is_active ? "active" : "inactive"}
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[13px] font-medium truncate min-w-0 flex-1">
+                          {quota.connection_name}
                         </div>
-                      </div>
-                      <div className="flex shrink-0 items-start pt-1">
                         <button
                           type="button"
                           role="switch"
@@ -174,16 +171,19 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
                           disabled={togglingId === quota.connection_id}
                           onClick={() => void toggleConnection(quota.connection_id, !quota.is_active)}
                           className={cn(
-                            "relative h-5 w-9 rounded-full transition-colors disabled:opacity-50",
+                            "relative shrink-0 h-5 w-9 rounded-full transition-colors disabled:opacity-50",
                             quota.is_active ? "bg-[hsl(var(--primary))]" : "bg-[hsl(var(--muted))]"
                           )}
                           title={quota.is_active ? "Turn off account" : "Turn on account"}
                         >
-                          <span className={cn(
-                            "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform",
-                            quota.is_active ? "translate-x-4" : "translate-x-0.5"
-                          )} />
+                          <span
+                            className="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all duration-200"
+                            style={{ left: quota.is_active ? '18px' : '2px' }}
+                          />
                         </button>
+                      </div>
+                      <div className="text-[13px] text-[hsl(var(--muted-foreground))]">
+                        {quota.plan_type} • {quota.is_active ? "active" : "inactive"}
                       </div>
                     </div>
                     {quota.primary_window && (

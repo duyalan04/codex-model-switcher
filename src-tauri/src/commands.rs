@@ -1,5 +1,5 @@
 use std::io::Write as IoWrite;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
@@ -139,19 +139,54 @@ fn read_codex_document() -> Result<toml_edit::DocumentMut, String> {
     let path = home.join(".codex/config.toml");
     let content = std::fs::read_to_string(&path)
         .map_err(|e| format!("Unable to read ~/.codex/config.toml: {e}"))?;
-    content.parse().map_err(|e| format!("Parse error in config.toml: {e}"))
+    content
+        .parse()
+        .map_err(|e| format!("Parse error in config.toml: {e}"))
 }
 
 fn read_switch_document() -> Result<toml_edit::DocumentMut, String> {
     let doc_dir = get_doc_dir().map_err(|e| format!("IO error: {e}"))?;
     let path = doc_dir.join("codex-switch.toml");
     if path.exists() {
-        let content = std::fs::read_to_string(&path)
-            .map_err(|e| format!("Unable to read config: {e}"))?;
+        let content =
+            std::fs::read_to_string(&path).map_err(|e| format!("Unable to read config: {e}"))?;
         content.parse().map_err(|e| format!("Parse error: {e}"))
     } else {
         Ok(toml_edit::DocumentMut::new())
     }
+}
+
+fn write_text_with_backup(path: &Path, content: String, label: &str) -> Result<(), String> {
+    let backup = path.with_extension("toml.bak");
+    let tmp = path.with_extension("toml.tmp");
+
+    {
+        let mut file = std::fs::File::create(&tmp)
+            .map_err(|e| format!("Unable to create temporary {label}: {e}"))?;
+        file.write_all(content.as_bytes())
+            .map_err(|e| format!("Unable to write temporary {label}: {e}"))?;
+        file.sync_all()
+            .map_err(|e| format!("Unable to flush temporary {label}: {e}"))?;
+    }
+
+    if path.exists() {
+        std::fs::copy(path, &backup).map_err(|e| format!("Unable to backup {label}: {e}"))?;
+    }
+
+    if std::fs::rename(&tmp, path).is_ok() {
+        return Ok(());
+    }
+
+    if path.exists() {
+        std::fs::remove_file(path).map_err(|e| format!("Unable to replace {label}: {e}"))?;
+    }
+    if let Err(error) = std::fs::rename(&tmp, path) {
+        if backup.exists() {
+            let _ = std::fs::copy(&backup, path);
+        }
+        return Err(format!("Unable to replace {label}: {error}"));
+    }
+    Ok(())
 }
 
 fn save_switch_document(doc: &toml_edit::DocumentMut) -> Result<(), String> {
@@ -159,8 +194,7 @@ fn save_switch_document(doc: &toml_edit::DocumentMut) -> Result<(), String> {
     std::fs::create_dir_all(&doc_dir)
         .map_err(|e| format!("Unable to create config directory: {e}"))?;
     let path = doc_dir.join("codex-switch.toml");
-    std::fs::write(&path, doc.to_string())
-        .map_err(|e| format!("Unable to write config: {e}"))
+    write_text_with_backup(&path, doc.to_string(), "config")
 }
 
 // ─── Logging ─────────────────────────────────────────────────────────────────
@@ -228,7 +262,10 @@ pub fn load_config() -> Result<CodexConfig, String> {
 pub fn save_config(model: String, reasoning_effort: String) -> Result<bool, String> {
     let valid = ["minimal", "low", "medium", "high", "xhigh", "max"];
     if !valid.contains(&reasoning_effort.as_str()) {
-        return Err(format!("Invalid reasoning_effort '{}'. Valid: {:?}", reasoning_effort, valid));
+        return Err(format!(
+            "Invalid reasoning_effort '{}'. Valid: {:?}",
+            reasoning_effort, valid
+        ));
     }
 
     let home = dirs::home_dir().ok_or("Unable to locate home directory")?;
@@ -236,16 +273,15 @@ pub fn save_config(model: String, reasoning_effort: String) -> Result<bool, Stri
 
     let content = std::fs::read_to_string(&path)
         .map_err(|e| format!("Unable to read ~/.codex/config.toml: {e}"))?;
-    let mut doc: toml_edit::DocumentMut = content.parse()
-        .map_err(|e| format!("Parse error: {e}"))?;
+    let mut doc: toml_edit::DocumentMut =
+        content.parse().map_err(|e| format!("Parse error: {e}"))?;
 
     doc["model"] = toml_edit::value(&model);
     doc["model_reasoning_effort"] = toml_edit::value(reasoning_effort);
     // Always ensure model_provider is set to 9router for this app
     doc["model_provider"] = toml_edit::value("9router");
 
-    std::fs::write(&path, doc.to_string())
-        .map_err(|e| format!("Write error: {e}"))?;
+    write_text_with_backup(&path, doc.to_string(), "~/.codex/config.toml")?;
 
     let _ = write_log(&format!("Saved config: model={}", model));
     Ok(true)
@@ -264,13 +300,73 @@ fn strip_primary(model: &str) -> (String, Option<String>) {
     (model.to_string(), None)
 }
 
+fn primary_model_entry(model: &str, reasoning_effort: Option<&str>) -> String {
+    let target_base = strip_primary(model).0;
+    match reasoning_effort {
+        Some(level)
+            if matches!(
+                level,
+                "low" | "medium" | "high" | "xhigh" | "minimal" | "none" | "max"
+            ) =>
+        {
+            format!("{target_base}({level})")
+        }
+        _ => target_base,
+    }
+}
+
+fn reorder_combo_models(
+    current_models: &[String],
+    model: &str,
+    reasoning_effort: Option<&str>,
+) -> Vec<String> {
+    let target_base = strip_primary(model).0;
+    let mut seen = vec![target_base];
+    let mut new_models = vec![primary_model_entry(model, reasoning_effort)];
+
+    for model_entry in current_models {
+        let base = strip_primary(model_entry).0;
+        if !seen.contains(&base) {
+            seen.push(base);
+            new_models.push(model_entry.clone());
+        }
+    }
+
+    new_models
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{is_newer, parse_quota_window, strip_primary, QuotaWindow};
+    use super::{
+        is_newer, parse_quota_window, port_from_url, reorder_combo_models, router_models_url,
+        strip_primary, trusted_release_asset_url, write_text_with_backup, QuotaWindow,
+    };
 
     #[test]
     fn parses_combo_primary_model() {
-        assert_eq!(strip_primary("cx/gpt-5.6-sol(high)"), ("cx/gpt-5.6-sol".into(), Some("high".into())));
+        assert_eq!(
+            strip_primary("cx/gpt-5.6-sol(high)"),
+            ("cx/gpt-5.6-sol".into(), Some("high".into()))
+        );
+    }
+
+    #[test]
+    fn reorders_combo_without_losing_secondary_suffixes() {
+        let current = vec![
+            "cx/a(low)".to_string(),
+            "cx/b(high)".to_string(),
+            "cx/a(max)".to_string(),
+            "cx/c".to_string(),
+        ];
+
+        assert_eq!(
+            reorder_combo_models(&current, "cx/c", Some("max")),
+            vec![
+                "cx/c(max)".to_string(),
+                "cx/a(low)".to_string(),
+                "cx/b(high)".to_string(),
+            ]
+        );
     }
 
     #[test]
@@ -293,6 +389,57 @@ mod tests {
         assert!(is_newer("v0.2.0", "0.1.0"));
         assert!(!is_newer("0.1.0", "0.1.0"));
         assert!(!is_newer("0.1.0", "0.2.0"));
+    }
+
+    #[test]
+    fn writes_config_with_backup() {
+        let dir = std::env::temp_dir().join(format!(
+            "codex-model-switcher-test-{}",
+            chrono::Local::now()
+                .timestamp_nanos_opt()
+                .unwrap_or_default()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+        std::fs::write(&path, "old").unwrap();
+
+        write_text_with_backup(&path, "new".to_string(), "test config").unwrap();
+
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "new");
+        assert_eq!(
+            std::fs::read_to_string(path.with_extension("toml.bak")).unwrap(),
+            "old"
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn builds_models_url_without_double_v1() {
+        assert_eq!(
+            router_models_url("http://127.0.0.1:20128/v1").unwrap(),
+            "http://127.0.0.1:20128/v1/models"
+        );
+        assert_eq!(
+            router_models_url("http://127.0.0.1:20128").unwrap(),
+            "http://127.0.0.1:20128/v1/models"
+        );
+    }
+
+    #[test]
+    fn parses_router_port_from_v1_url() {
+        assert_eq!(port_from_url("http://127.0.0.1:20128/v1"), 20128);
+    }
+
+    #[test]
+    fn trusts_only_project_release_assets() {
+        assert!(trusted_release_asset_url(
+            "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/latest.json",
+            ".json"
+        ));
+        assert!(!trusted_release_asset_url(
+            "https://example.com/codex-model-switcher.exe",
+            ".exe"
+        ));
     }
 }
 
@@ -318,8 +465,16 @@ pub fn fetch_combos() -> Result<Vec<Combo>, String> {
                 .map(|model| strip_primary(model))
                 .map(|(model, effort)| (Some(model), effort))
                 .unwrap_or_default();
-            let models = stored_models.iter().map(|model| strip_primary(model).0).collect();
-            Ok(Combo { name, models, primary_model, primary_effort })
+            let models = stored_models
+                .iter()
+                .map(|model| strip_primary(model).0)
+                .collect();
+            Ok(Combo {
+                name,
+                models,
+                primary_model,
+                primary_effort,
+            })
         })
         .map_err(|e| format!("Query error: {e}"))?
         .filter_map(|r| r.ok())
@@ -329,7 +484,11 @@ pub fn fetch_combos() -> Result<Vec<Combo>, String> {
 }
 
 #[tauri::command]
-pub fn set_primary_model(combo_name: String, model: String, reasoning_effort: Option<String>) -> Result<(), String> {
+pub fn set_primary_model(
+    combo_name: String,
+    model: String,
+    reasoning_effort: Option<String>,
+) -> Result<(), String> {
     let db_path = get_9router_db_path()?;
     let conn = rusqlite::Connection::open(&db_path)
         .map_err(|e| format!("Unable to open database: {e}"))?;
@@ -345,25 +504,10 @@ pub fn set_primary_model(combo_name: String, model: String, reasoning_effort: Op
         })
         .map_err(|_| "Combo not found".to_string())?;
 
-    let target_base = strip_primary(&model).0;
+    let new_models = reorder_combo_models(&current_models, &model, reasoning_effort.as_deref());
+    let primary = new_models.first().cloned().unwrap_or_default();
 
-    let primary = match reasoning_effort.as_deref() {
-        Some(level) if matches!(level, "low" | "medium" | "high" | "xhigh" | "minimal" | "none" | "max") => {
-            format!("{target_base}({level})")
-        }
-        _ => target_base.clone(),
-    };
-
-    let mut new_models = vec![primary.clone()];
-    for m in &current_models {
-        let base = strip_primary(m).0;
-        if base != target_base {
-            new_models.push(base);
-        }
-    }
-
-    let models_json = serde_json::to_string(&new_models)
-        .map_err(|e| format!("JSON error: {e}"))?;
+    let models_json = serde_json::to_string(&new_models).map_err(|e| format!("JSON error: {e}"))?;
 
     conn.execute(
         "UPDATE combos SET models = ?, updatedAt = datetime('now') WHERE name = ?",
@@ -507,72 +651,84 @@ fn get_connection_quotas(conn: &rusqlite::Connection) -> Vec<ConnectionQuota> {
         Err(error) => {
             return rows
                 .into_iter()
-                .map(|(connection_id, connection_name, provider, is_active, _)| ConnectionQuota {
-                    connection_id,
-                    connection_name,
-                    provider,
-                    plan_type: "unknown".to_string(),
-                    is_active,
-                    primary_window: None,
-                    secondary_window: None,
-                    error: Some(error.to_string()),
-                })
+                .map(
+                    |(connection_id, connection_name, provider, is_active, _)| ConnectionQuota {
+                        connection_id,
+                        connection_name,
+                        provider,
+                        plan_type: "unknown".to_string(),
+                        is_active,
+                        primary_window: None,
+                        secondary_window: None,
+                        error: Some(error.to_string()),
+                    },
+                )
                 .collect();
         }
     };
 
     rows.into_iter()
-        .map(|(connection_id, connection_name, provider, is_active, data)| {
-            let data: serde_json::Value = serde_json::from_str(&data).unwrap_or_default();
-            let access_token = data.get("accessToken").and_then(|value| value.as_str());
-            let provider_data = data.get("providerSpecificData");
-            let account_id = provider_data
-                .and_then(|value| value.get("chatgptAccountId"))
-                .and_then(|value| value.as_str());
-            let plan_type = provider_data
-                .and_then(|value| value.get("chatgptPlanType"))
-                .and_then(|value| value.as_str())
-                .unwrap_or("unknown")
-                .to_string();
+        .map(
+            |(connection_id, connection_name, provider, is_active, data)| {
+                let data: serde_json::Value = serde_json::from_str(&data).unwrap_or_default();
+                let access_token = data.get("accessToken").and_then(|value| value.as_str());
+                let provider_data = data.get("providerSpecificData");
+                let account_id = provider_data
+                    .and_then(|value| value.get("chatgptAccountId"))
+                    .and_then(|value| value.as_str());
+                let plan_type = provider_data
+                    .and_then(|value| value.get("chatgptPlanType"))
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("unknown")
+                    .to_string();
 
-            let mut quota = ConnectionQuota {
-                connection_id,
-                connection_name,
-                provider,
-                plan_type,
-                is_active,
-                primary_window: None,
-                secondary_window: None,
-                error: None,
-            };
+                let mut quota = ConnectionQuota {
+                    connection_id,
+                    connection_name,
+                    provider,
+                    plan_type,
+                    is_active,
+                    primary_window: None,
+                    secondary_window: None,
+                    error: None,
+                };
 
-            let Some((access_token, account_id)) = access_token.zip(account_id) else {
-                quota.error = Some("Missing Codex credentials in 9Router".to_string());
-                return quota;
-            };
+                let Some((access_token, account_id)) = access_token.zip(account_id) else {
+                    quota.error = Some("Missing Codex credentials in 9Router".to_string());
+                    return quota;
+                };
 
-            // ponytail: Codex-only quota endpoint; add provider adapters when 9Router connections need them.
-            match client
-                .get("https://chatgpt.com/backend-api/wham/usage")
-                .bearer_auth(access_token)
-                .header("ChatGPT-Account-Id", account_id)
-                .header("originator", "codex_cli_rs")
-                .send()
-            {
-                Ok(response) if response.status().is_success() => match response.json::<serde_json::Value>() {
-                    Ok(body) => {
-                        let rate_limit = body.get("rate_limit");
-                        quota.primary_window = parse_quota_window(rate_limit.and_then(|value| value.get("primary_window")));
-                        quota.secondary_window = parse_quota_window(rate_limit.and_then(|value| value.get("secondary_window")));
+                // ponytail: Codex-only quota endpoint; add provider adapters when 9Router connections need them.
+                match client
+                    .get("https://chatgpt.com/backend-api/wham/usage")
+                    .bearer_auth(access_token)
+                    .header("ChatGPT-Account-Id", account_id)
+                    .header("originator", "codex_cli_rs")
+                    .send()
+                {
+                    Ok(response) if response.status().is_success() => {
+                        match response.json::<serde_json::Value>() {
+                            Ok(body) => {
+                                let rate_limit = body.get("rate_limit");
+                                quota.primary_window = parse_quota_window(
+                                    rate_limit.and_then(|value| value.get("primary_window")),
+                                );
+                                quota.secondary_window = parse_quota_window(
+                                    rate_limit.and_then(|value| value.get("secondary_window")),
+                                );
+                            }
+                            Err(error) => {
+                                quota.error = Some(format!("Invalid quota response: {error}"))
+                            }
+                        }
                     }
-                    Err(error) => quota.error = Some(format!("Invalid quota response: {error}")),
-                },
-                Ok(response) => quota.error = Some(format!("Quota HTTP {}", response.status())),
-                Err(error) => quota.error = Some(format!("Quota unavailable: {error}")),
-            }
+                    Ok(response) => quota.error = Some(format!("Quota HTTP {}", response.status())),
+                    Err(error) => quota.error = Some(format!("Quota unavailable: {error}")),
+                }
 
-            quota
-        })
+                quota
+            },
+        )
         .collect()
 }
 
@@ -581,9 +737,7 @@ pub fn get_quota_report() -> Result<QuotaReport, String> {
     let conn = rusqlite::Connection::open(&db_path)
         .map_err(|e| format!("Unable to open database: {e}"))?;
 
-    let has_usage = conn
-        .prepare("SELECT COUNT(*) FROM usageHistory")
-        .is_ok();
+    let has_usage = conn.prepare("SELECT COUNT(*) FROM usageHistory").is_ok();
 
     if !has_usage {
         return Ok(QuotaReport {
@@ -650,9 +804,7 @@ pub fn get_quota_report() -> Result<QuotaReport, String> {
 
     let mut conn_names: std::collections::HashMap<String, (String, String, String)> =
         std::collections::HashMap::new();
-    if let Ok(mut rows) = conn.prepare(
-        "SELECT id, name, provider, data FROM providerConnections",
-    ) {
+    if let Ok(mut rows) = conn.prepare("SELECT id, name, provider, data FROM providerConnections") {
         let name_rows: Vec<(String, String, String, String)> = rows
             .query_map([], |row| {
                 Ok((
@@ -693,9 +845,7 @@ pub fn get_quota_report() -> Result<QuotaReport, String> {
             grand_cost += stats.cost;
             grand_tokens += stats.prompt + stats.completion;
 
-            let days_active = if let (Some(first), Some(last)) =
-                (&stats.first_ts, &stats.last_ts)
-            {
+            let days_active = if let (Some(first), Some(last)) = (&stats.first_ts, &stats.last_ts) {
                 let f = &first[..10];
                 let l = &last[..10];
                 if f == l {
@@ -704,9 +854,9 @@ pub fn get_quota_report() -> Result<QuotaReport, String> {
                     chrono::NaiveDate::parse_from_str(l, "%Y-%m-%d")
                         .ok()
                         .and_then(|ld| {
-                            chrono::NaiveDate::parse_from_str(f, "%Y-%m-%d").ok().and_then(|fd| {
-                                (ld - fd).num_days().try_into().ok()
-                            })
+                            chrono::NaiveDate::parse_from_str(f, "%Y-%m-%d")
+                                .ok()
+                                .and_then(|fd| (ld - fd).num_days().try_into().ok())
                         })
                         .unwrap_or(1)
                 }
@@ -841,9 +991,22 @@ fn is_newer(latest: &str, current: &str) -> bool {
     false
 }
 
-/// Default manifest URL; `update_url` in codex-switch.toml overrides it.
+/// Default manifest URL; `update_url` in codex-switch.toml overrides it when it
+/// still points to this repository's GitHub release assets.
 const DEFAULT_UPDATE_URL: &str =
     "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/latest.json";
+
+fn trusted_release_asset_url(raw: &str, suffix: &str) -> bool {
+    let Ok(url) = reqwest::Url::parse(raw.trim()) else {
+        return false;
+    };
+    url.scheme() == "https"
+        && url.host_str() == Some("github.com")
+        && url
+            .path()
+            .starts_with("/duyalan04/codex-model-switcher/releases/")
+        && url.path().ends_with(suffix)
+}
 
 #[tauri::command]
 pub fn check_update() -> Result<UpdateInfo, String> {
@@ -855,7 +1018,7 @@ pub fn check_update() -> Result<UpdateInfo, String> {
                 .and_then(|value| value.as_str())
                 .map(|value| value.trim().to_string())
         })
-        .filter(|value| value.starts_with("https://"))
+        .filter(|value| trusted_release_asset_url(value, ".json"))
         .unwrap_or_else(|| DEFAULT_UPDATE_URL.to_string());
 
     let client = reqwest::blocking::Client::builder()
@@ -885,7 +1048,9 @@ pub fn check_update() -> Result<UpdateInfo, String> {
 
     let update_available = is_newer(&latest_version, &current_version);
     if update_available {
-        let _ = write_log(&format!("Update available: {current_version} -> {latest_version}"));
+        let _ = write_log(&format!(
+            "Update available: {current_version} -> {latest_version}"
+        ));
     }
 
     Ok(UpdateInfo {
@@ -895,7 +1060,7 @@ pub fn check_update() -> Result<UpdateInfo, String> {
         download_url: manifest
             .get("url")
             .and_then(|value| value.as_str())
-            .filter(|value| value.starts_with("https://"))
+            .filter(|value| trusted_release_asset_url(value, ".exe"))
             .map(String::from),
         notes: manifest
             .get("notes")
@@ -909,11 +1074,8 @@ pub fn check_update() -> Result<UpdateInfo, String> {
 /// unlocked; the installer reopens it when finished.
 #[tauri::command]
 pub fn install_update(download_url: String) -> Result<(), String> {
-    if !download_url.starts_with("https://") {
-        return Err("Refusing non-https installer URL".to_string());
-    }
-    if !download_url.to_ascii_lowercase().ends_with(".exe") {
-        return Err("Installer URL must point to an .exe".to_string());
+    if !trusted_release_asset_url(&download_url, ".exe") {
+        return Err("Installer URL must be a trusted GitHub release .exe".to_string());
     }
 
     let client = reqwest::blocking::Client::builder()
@@ -948,17 +1110,39 @@ pub fn install_update(download_url: String) -> Result<(), String> {
         .spawn()
         .map_err(|error| format!("Unable to start installer: {error}"))?;
 
-    let _ = write_log(&format!("Running update installer: {}", installer.display()));
+    let _ = write_log(&format!(
+        "Running update installer: {}",
+        installer.display()
+    ));
     std::process::exit(0);
 }
 
 // ─── URL helpers ───────────────────────────────────────────────────────────────
 
 fn port_from_url(url: &str) -> u16 {
-    url.split(':')
-        .next_back()
-        .and_then(|p| p.parse().ok())
+    reqwest::Url::parse(url.trim())
+        .ok()
+        .and_then(|url| url.port_or_known_default())
         .unwrap_or(8080)
+}
+
+fn router_models_url(base_url: &str) -> Result<String, String> {
+    let mut url =
+        reqwest::Url::parse(base_url.trim()).map_err(|_| "Invalid base_url".to_string())?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err("base_url must use http or https".to_string());
+    }
+
+    let path = url.path().trim_end_matches('/');
+    let models_path = if path.ends_with("/v1") {
+        format!("{path}/models")
+    } else {
+        format!("{path}/v1/models")
+    };
+    url.set_path(&models_path);
+    url.set_query(None);
+    url.set_fragment(None);
+    Ok(url.to_string())
 }
 
 // ─── Process helpers ──────────────────────────────────────────────────────────
@@ -997,7 +1181,8 @@ fn find_pid_by_port(port: u16) -> Result<u32, String> {
         for line in stdout.lines() {
             if line.contains(&format!(":{port}")) && line.contains("LISTENING") {
                 if let Some(pid_str) = line.split_whitespace().last() {
-                    return pid_str.parse::<u32>()
+                    return pid_str
+                        .parse::<u32>()
                         .map_err(|_| "Failed to parse PID".to_string());
                 }
             }
@@ -1011,7 +1196,9 @@ fn find_pid_by_port(port: u16) -> Result<u32, String> {
             .output()
             .map_err(|e| format!("lsof failed: {e}"))?;
         let pid_str = String::from_utf8_lossy(&output.stdout);
-        pid_str.trim().parse::<u32>()
+        pid_str
+            .trim()
+            .parse::<u32>()
             .map_err(|_| "Failed to parse PID".to_string())
     }
 }
@@ -1025,7 +1212,7 @@ pub async fn fetch_models(base_url: String) -> Result<Vec<String>, String> {
         .build()
         .map_err(|e| format!("HTTP client error: {e}"))?;
 
-    let url = format!("{}/v1/models", base_url.trim_end_matches('/'));
+    let url = router_models_url(&base_url)?;
     let response = client
         .get(&url)
         .send()
@@ -1058,11 +1245,10 @@ pub async fn fetch_models(base_url: String) -> Result<Vec<String>, String> {
 pub async fn check_router_status(base_url: String, health_timeout: Option<u64>) -> bool {
     let timeout = std::time::Duration::from_secs(health_timeout.unwrap_or(3).max(1));
 
-    if let Ok(client) = reqwest::Client::builder()
-        .timeout(timeout)
-        .build()
-    {
-        let url = format!("{}/v1/models", base_url.trim_end_matches('/'));
+    if let Ok(client) = reqwest::Client::builder().timeout(timeout).build() {
+        let Ok(url) = router_models_url(&base_url) else {
+            return false;
+        };
         if let Ok(response) = client.get(&url).send().await {
             return response.status().is_success();
         }
@@ -1145,7 +1331,9 @@ pub fn stop_router(base_url: String) -> Result<(), String> {
     if let Ok(mut guard) = ROUTER_PID.lock() {
         *guard = None;
     }
-    let _ = write_log(&format!("Router Stopped via port scan (port {port}, pid {pid})"));
+    let _ = write_log(&format!(
+        "Router Stopped via port scan (port {port}, pid {pid})"
+    ));
     Ok(())
 }
 
@@ -1167,7 +1355,13 @@ pub async fn restart_router(
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     }
 
-    start_router(startup_command, base_url, startup_timeout, Some(health_timeout)).await
+    start_router(
+        startup_command,
+        base_url,
+        startup_timeout,
+        Some(health_timeout),
+    )
+    .await
 }
 
 #[tauri::command]
