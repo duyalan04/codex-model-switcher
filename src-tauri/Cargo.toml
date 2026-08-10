@@ -1,6 +1,6 @@
 [package]
 name = "codex-model-switcher"
-version = "0.3.2"
+version = "0.3.3"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
