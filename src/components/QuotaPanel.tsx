@@ -153,13 +153,13 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
 
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-4 pr-1">
             {report.quotas.length > 0 && (
-              <div className="space-y-1.5 mb-2">
+              <div className="flex flex-col gap-3 mb-2">
                 <span className="text-[13px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]/60">
                   Remaining Quota
                 </span>
                 {report.quotas.map(quota => (
-                  <div key={quota.connection_id} className="rounded-md px-2 py-1.5 bg-[hsl(var(--muted))]/20 space-y-1">
-                    <div className="flex flex-col gap-0.5">
+                  <div key={quota.connection_id} className="rounded-lg space-y-1.5 border border-[hsl(var(--border))]/50" style={{ padding: '10px 12px', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
+                    <div className="flex flex-col gap-1">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-[13px] font-medium truncate min-w-0 flex-1">
                           {quota.connection_name}
@@ -216,12 +216,12 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
 
             {/* Per-provider summary */}
             {expanded && report.providers.length > 0 && (
-              <div className="space-y-1 mb-2">
+              <div className="flex flex-col gap-2 mb-2 mt-4">
                 <span className="text-[13px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]/60">
                   Connections
                 </span>
                 {report.providers.map(p => (
-                  <div key={p.connection_id} className="flex items-center justify-between rounded-md px-2 py-1 bg-[hsl(var(--muted))]/20">
+                  <div key={p.connection_id} className="flex items-center justify-between rounded-lg border border-[hsl(var(--border))]/50" style={{ padding: '8px 12px', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-[13px] font-medium truncate">
                         {p.connection_name || p.connection_id.slice(0, 8)}

@@ -1,5 +1,5 @@
 {
-    "version":  "0.3.3",
-    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.3.3_x64-setup.exe",
-    "notes":  "Fix QuotaPanel toggle switch positioning bug"
+    "version":  "0.3.4",
+    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.3.4_x64-setup.exe",
+    "notes":  "Improve quota item styling and reposition app version"
 }
