@@ -151,7 +151,7 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-4 pr-1">
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-4 pr-1" style={{ overflowY: 'auto' }}>
             {report.quotas.length > 0 && (
               <div className="flex flex-col gap-3 mb-2">
                 <span className="text-[13px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]/60">

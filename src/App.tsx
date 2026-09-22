@@ -335,7 +335,7 @@ function App() {
         <div className="grid grid-cols-2 gap-5 flex-1 min-h-0">
 
           {/* LEFT COLUMN: Model Switcher (7 cols) */}
-          <div className="min-w-0 flex flex-col gap-5 h-full">
+          <div className="min-w-0 min-h-0 flex flex-col gap-5 h-full">
             <section className="flex flex-col bg-[hsl(var(--muted))]/10 border border-[hsl(var(--border))]/40 rounded-2xl gap-6 h-full" style={{ padding: '24px' }}>
               {/* Target Model Area */}
               <div className="flex flex-col gap-3">
@@ -394,7 +394,7 @@ function App() {
           </div>
 
           {/* RIGHT COLUMN: Router Control & Quota Tracker (5 cols) */}
-          <div className="min-w-0 flex flex-col gap-5 h-full">
+          <div className="min-w-0 min-h-0 flex flex-col gap-5 h-full">
             <section className="shrink-0">
               <RouterControl baseUrl={baseUrl} onStatusChange={handleRouterStatus} />
             </section>
