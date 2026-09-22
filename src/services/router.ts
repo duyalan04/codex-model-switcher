@@ -112,6 +112,7 @@ export async function saveRouterSettings(
 // ─── Quota / Usage tracking ───────────────────────────────────────────────────
 
 export interface DailyUsage {
+  cached_tokens: number;
   date: string;
   calls: number;
   cost: number;
@@ -154,6 +155,7 @@ export interface ConnectionQuota {
 }
 
 export interface QuotaReport {
+  selected_usage: DailyUsage;
   providers: ProviderStats[];
   quotas: ConnectionQuota[];
   daily: DailyUsage[];
@@ -163,8 +165,8 @@ export interface QuotaReport {
   report_date: string;
 }
 
-export async function getQuota(): Promise<QuotaReport> {
-  return invoke<QuotaReport>("get_quota");
+export async function getQuota(date?: string): Promise<QuotaReport> {
+  return invoke<QuotaReport>("get_quota", { date: date || null });
 }
 
 export async function setConnectionActive(

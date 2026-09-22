@@ -1,5 +1,5 @@
 {
-    "version":  "0.3.4",
-    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.3.4_x64-setup.exe",
-    "notes":  "Improve quota item styling and reposition app version"
+    "version":  "0.3.5",
+    "url":  "https://github.com/duyalan04/codex-model-switcher/releases/latest/download/codex-model-switcher_0.3.5_x64-setup.exe",
+    "notes":  "Daily usage matching 9Router: Today and date selection, requests, input, cached, output and estimated cost; preserve live account quotas."
 }

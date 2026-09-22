@@ -76,6 +76,7 @@ pub struct DailyUsage {
     pub prompt_tokens: i64,
     pub completion_tokens: i64,
     pub total_tokens: i64,
+    pub cached_tokens: i64,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -100,6 +101,7 @@ pub struct ConnectionQuota {
 
 #[derive(Debug, Serialize)]
 pub struct QuotaReport {
+    pub selected_usage: DailyUsage,
     pub providers: Vec<ProviderStats>,
     pub quotas: Vec<ConnectionQuota>,
     pub daily: Vec<DailyUsage>,
@@ -337,6 +339,30 @@ fn reorder_combo_models(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn daily_usage_matches_router_tokens_and_local_day() {
+        use chrono::TimeZone;
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        assert_eq!(super::read_daily_usage(&conn, None).unwrap().calls, 0);
+        conn.execute_batch("CREATE TABLE usageHistory (timestamp TEXT, cost REAL, tokens TEXT);").unwrap();
+        let start = chrono::Local.with_ymd_and_hms(2026, 9, 22, 0, 0, 0).single().unwrap();
+        let end = chrono::Local.with_ymd_and_hms(2026, 9, 23, 0, 0, 0).single().unwrap();
+        for timestamp in [start - chrono::Duration::seconds(1), start, end - chrono::Duration::seconds(1), end] {
+            conn.execute("INSERT INTO usageHistory VALUES (?, 0.5, ?)", rusqlite::params![timestamp.to_utc().to_rfc3339_opts(chrono::SecondsFormat::Millis, true), r#"{"prompt_tokens":100,"completion_tokens":5,"cache_read_input_tokens":80}"#]).unwrap();
+        }
+        let usage = super::read_daily_usage(&conn, Some("2026-09-22")).unwrap();
+        assert_eq!((usage.calls, usage.prompt_tokens, usage.completion_tokens, usage.cached_tokens, usage.total_tokens), (2, 200, 10, 160, 210));
+        assert_eq!(usage.cost, 1.0);
+        assert_eq!(super::read_daily_usage(&conn, Some("2026-09-24")).unwrap().calls, 0);
+        for date in ["invalid", "2026-02-30", "2026-9-22"] {
+            assert!(super::read_daily_usage(&conn, Some(date)).is_err());
+        }
+        conn.execute("UPDATE usageHistory SET tokens = ?", [r#"{"prompt_tokens":100,"cached_tokens":60,"cache_read_input_tokens":80}"#]).unwrap();
+        assert_eq!(super::read_daily_usage(&conn, Some("2026-09-22")).unwrap().cached_tokens, 120);
+        conn.execute("UPDATE usageHistory SET tokens = 'invalid'", []).unwrap();
+        assert_eq!(super::read_daily_usage(&conn, Some("2026-09-22")).unwrap().prompt_tokens, 0);
+    }
+
     use super::{
         is_newer, parse_quota_window, port_from_url, reorder_combo_models, router_models_url,
         strip_primary, trusted_release_asset_url, write_text_with_backup, QuotaWindow,
@@ -732,15 +758,61 @@ fn get_connection_quotas(conn: &rusqlite::Connection) -> Vec<ConnectionQuota> {
         .collect()
 }
 
-pub fn get_quota_report() -> Result<QuotaReport, String> {
+fn read_daily_usage(conn: &rusqlite::Connection, date: Option<&str>) -> Result<DailyUsage, String> {
+    use chrono::TimeZone;
+    let day = match date {
+        Some(value) => chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d")
+            .ok().filter(|day| day.format("%Y-%m-%d").to_string() == value)
+            .ok_or("Invalid usage date; expected YYYY-MM-DD")?,
+        None => chrono::Local::now().date_naive(),
+    };
+    let next = day.succ_opt().ok_or("Usage date out of range")?;
+    let boundary = |day: chrono::NaiveDate| {
+        chrono::Local.from_local_datetime(&day.and_hms_opt(0, 0, 0).unwrap())
+            .earliest().map(|time| time.to_utc().to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
+            .ok_or("Cannot resolve local day boundary")
+    };
+    let mut usage = DailyUsage {
+        date: day.to_string(), calls: 0, cost: 0.0, prompt_tokens: 0,
+        completion_tokens: 0, total_tokens: 0, cached_tokens: 0,
+    };
+    let has_usage: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'usageHistory')",
+        [], |row| row.get(0),
+    ).map_err(|error| format!("Query error: {error}"))?;
+    if !has_usage { return Ok(usage); }
+    let mut statement = conn.prepare(
+        "SELECT cost, tokens FROM usageHistory WHERE timestamp >= ? AND timestamp < ?"
+    ).map_err(|error| format!("Query error: {error}"))?;
+    let rows = statement.query_map([boundary(day)?, boundary(next)?], |row| {
+        Ok((row.get::<_, Option<f64>>(0)?.unwrap_or_default(), row.get::<_, Option<String>>(1)?))
+    }).map_err(|error| format!("Query error: {error}"))?;
+    for row in rows {
+        let (cost, raw) = row.map_err(|error| format!("Usage row error: {error}"))?;
+        let tokens: serde_json::Value = raw.as_deref().and_then(|value| serde_json::from_str(value).ok()).unwrap_or_default();
+        let count = |key: &str| tokens.get(key).and_then(|value| value.as_i64()).unwrap_or_default();
+        usage.calls += 1;
+        usage.cost += cost;
+        usage.prompt_tokens += count("prompt_tokens");
+        usage.completion_tokens += count("completion_tokens");
+        let cached = count("cached_tokens");
+        usage.cached_tokens += if cached == 0 { count("cache_read_input_tokens") } else { cached };
+    }
+    usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+    Ok(usage)
+}
+
+pub fn get_quota_report(date: Option<&str>) -> Result<QuotaReport, String> {
     let db_path = get_9router_db_path()?;
     let conn = rusqlite::Connection::open(&db_path)
         .map_err(|e| format!("Unable to open database: {e}"))?;
 
+    let selected_usage = read_daily_usage(&conn, date)?;
     let has_usage = conn.prepare("SELECT COUNT(*) FROM usageHistory").is_ok();
 
     if !has_usage {
         return Ok(QuotaReport {
+            selected_usage,
             providers: vec![],
             quotas: get_connection_quotas(&conn),
             daily: vec![],
@@ -911,6 +983,7 @@ pub fn get_quota_report() -> Result<QuotaReport, String> {
     for (ts, cost, prompt, completion) in daily_rows {
         let date = ts[..10].to_string();
         let entry = daily_map.entry(date.clone()).or_insert(DailyUsage {
+            cached_tokens: 0,
             date,
             calls: 0,
             cost: 0.0,
@@ -929,6 +1002,7 @@ pub fn get_quota_report() -> Result<QuotaReport, String> {
     let quotas = get_connection_quotas(&conn);
 
     Ok(QuotaReport {
+        selected_usage,
         providers,
         quotas,
         daily,
@@ -940,8 +1014,8 @@ pub fn get_quota_report() -> Result<QuotaReport, String> {
 }
 
 #[tauri::command]
-pub fn get_quota() -> Result<QuotaReport, String> {
-    get_quota_report()
+pub fn get_quota(date: Option<String>) -> Result<QuotaReport, String> {
+    get_quota_report(date.as_deref())
 }
 
 #[tauri::command]

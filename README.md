@@ -152,3 +152,6 @@ cargo test --manifest-path src-tauri\Cargo.toml
 cargo clippy --manifest-path src-tauri\Cargo.toml --lib --all-targets
 npm run build
 ```
+# Daily usage
+
+The usage panel defaults to Today (midnight in the local 9Router machine's timezone). Choose a date to inspect that calendar day. Requests, input, cached, output and estimated cost use all matching rows in the local 9Router database, including requests without a current account. Cached tokens are already part of input; cost is an estimate, not a billing statement. Historical dates show retained request history, not a guaranteed lifetime archive. Remaining account quotas are live; expanded account totals remain all-time.

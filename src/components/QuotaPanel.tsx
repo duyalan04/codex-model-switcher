@@ -53,6 +53,7 @@ function MiniBar({ value, max, showPercent, isRemaining }: { value: number; max:
 }
 
 export function QuotaPanel({ className }: QuotaPanelProps) {
+  const [date, setDate] = useState("");
   const [report, setReport] = useState<QuotaReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -63,14 +64,14 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
     setLoading(true);
     setError(null);
     try {
-      const r = await getQuota();
+      const r = await getQuota(date);
       setReport(r);
     } catch (e) {
       setError(String(e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [date]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -102,7 +103,7 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
         <div className="flex items-center gap-2">
           <BarChart2 size={13} className="text-[hsl(var(--primary))]" />
           <span className="text-[13px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-            Actual Usage (DB)
+            Daily Usage (DB)
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -129,6 +130,27 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <button
+          type="button"
+          disabled={loading}
+          aria-pressed={!date}
+          onClick={() => { setReport(null); setDate(""); if (!date) void load(); }}
+          className="rounded-md border border-[hsl(var(--border))] px-2 py-1 text-xs disabled:opacity-50"
+        >Today</button>
+        <label className="flex items-center gap-2 text-xs">
+          Date
+          <input
+            type="date"
+            value={date || report?.selected_usage.date || ""}
+            disabled={loading}
+            onChange={event => { setReport(null); setDate(event.target.value); }}
+            className="min-w-0 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 disabled:opacity-50"
+          />
+        </label>
+        <span className="text-xs text-[hsl(var(--muted-foreground))]">Local time</span>
+      </div>
+
       {error && (
         <div className="text-[12px] text-[hsl(var(--destructive))] font-mono mb-2">{error}</div>
       )}
@@ -137,19 +159,22 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
         <>
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-2 mb-2">
-            <div className="flex flex-col items-center rounded-lg bg-[hsl(var(--muted))]/30 p-2">
-              <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">Total Calls</span>
-              <span className="text-sm font-bold tabular-nums">{fmt(report.grand_total_calls)}</span>
-            </div>
-            <div className="flex flex-col items-center rounded-lg bg-[hsl(var(--muted))]/30 p-2">
-              <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">Total Cost</span>
-              <span className="text-sm font-bold tabular-nums">{fmtCost(report.grand_total_cost)}</span>
-            </div>
-            <div className="flex flex-col items-center rounded-lg bg-[hsl(var(--muted))]/30 p-2">
-              <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">Total Tokens</span>
-              <span className="text-sm font-bold tabular-nums">{fmt(report.grand_total_tokens)}</span>
-            </div>
+            {[
+              ["Requests", report.selected_usage.calls.toLocaleString()],
+              ["Input", report.selected_usage.prompt_tokens.toLocaleString()],
+              ["Cached", report.selected_usage.cached_tokens.toLocaleString()],
+              ["Output", report.selected_usage.completion_tokens.toLocaleString()],
+              ["Est. Cost", fmtCost(report.selected_usage.cost)],
+            ].map(([label, value]) => (
+              <div key={label} className="flex min-w-0 flex-col items-center rounded-lg bg-[hsl(var(--muted))]/30 p-2">
+                <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">{label}</span>
+                <span className="text-sm font-bold tabular-nums break-all">{value}</span>
+              </div>
+            ))}
           </div>
+          <p className="text-xs text-[hsl(var(--muted-foreground))] mb-2">
+            {report.selected_usage.date} ? Estimated cost, not actual billing. Cached tokens are included in input.
+          </p>
 
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-4 pr-1" style={{ overflowY: 'auto' }}>
             {report.quotas.length > 0 && (
@@ -233,7 +258,7 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
                     <div className="flex flex-col items-end shrink-0">
                       <span className="text-[12px] font-bold tabular-nums">{fmt(p.total_calls)} calls</span>
                       <span className="text-[13px] font-mono text-[hsl(var(--primary))]">
-                        Spent: {fmtCost(p.total_cost)}
+                        All-time est.: {fmtCost(p.total_cost)}
                       </span>
                     </div>
                   </div>
