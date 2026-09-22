@@ -29,7 +29,7 @@ function fmtReset(seconds: number | null, resetAt: number | null): string {
   return `${minutes}m`;
 }
 
-function MiniBar({ value, max, showPercent, isRemaining }: { value: number; max: number; showPercent?: boolean; isRemaining?: boolean }) {
+function MiniBar({ value, max, showPercent, isRemaining, className }: { value: number; max: number; showPercent?: boolean; isRemaining?: boolean; className?: string }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   let color = "bg-[hsl(var(--primary))]/60";
   if (isRemaining) {
@@ -38,15 +38,15 @@ function MiniBar({ value, max, showPercent, isRemaining }: { value: number; max:
     color = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-yellow-500" : "bg-[hsl(var(--primary))]/60";
   }
   return (
-    <div className="flex items-center gap-1">
-      <div className="h-1.5 w-16 rounded-full bg-[hsl(var(--muted))] overflow-hidden">
+    <div className={cn("flex items-center gap-2", className)}>
+      <div className="h-1.5 flex-1 rounded-full bg-[hsl(var(--muted))] overflow-hidden">
         <div
           className={`h-full rounded-full ${color} transition-all`}
           style={{ width: `${pct}%` }}
         />
       </div>
       {showPercent && (
-        <span className="text-[13px] font-mono text-[hsl(var(--muted-foreground))]">{pct.toFixed(0)}%</span>
+        <span className="text-[13px] font-mono text-[hsl(var(--muted-foreground))] w-10 text-right">{pct.toFixed(0)}%</span>
       )}
     </div>
   );
@@ -158,23 +158,21 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
       {report && (
         <>
           {/* Summary stats */}
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-6 gap-2 mb-2">
             {[
-              ["Requests", report.selected_usage.calls.toLocaleString()],
-              ["Input", report.selected_usage.prompt_tokens.toLocaleString()],
-              ["Cached", report.selected_usage.cached_tokens.toLocaleString()],
-              ["Output", report.selected_usage.completion_tokens.toLocaleString()],
-              ["Est. Cost", fmtCost(report.selected_usage.cost)],
-            ].map(([label, value]) => (
-              <div key={label} className="flex min-w-0 flex-col items-center rounded-lg bg-[hsl(var(--muted))]/30 p-2">
+              ["Requests", report.selected_usage.calls.toLocaleString(), "col-span-2"],
+              ["Input", report.selected_usage.prompt_tokens.toLocaleString(), "col-span-2"],
+              ["Cached", report.selected_usage.cached_tokens.toLocaleString(), "col-span-2"],
+              ["Output", report.selected_usage.completion_tokens.toLocaleString(), "col-span-3"],
+              ["Est. Cost", fmtCost(report.selected_usage.cost), "col-span-3"],
+            ].map(([label, value, colClass]) => (
+              <div key={label} className={cn("flex min-w-0 flex-col items-center rounded-lg bg-[hsl(var(--muted))]/30 p-2", colClass)}>
                 <span className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">{label}</span>
                 <span className="text-sm font-bold tabular-nums break-all">{value}</span>
               </div>
             ))}
           </div>
-          <p className="text-xs text-[hsl(var(--muted-foreground))] mb-2">
-            {report.selected_usage.date} ? Estimated cost, not actual billing. Cached tokens are included in input.
-          </p>
+
 
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-4 pr-1" style={{ overflowY: 'auto' }}>
             {report.quotas.length > 0 && (
@@ -212,19 +210,19 @@ export function QuotaPanel({ className }: QuotaPanelProps) {
                       </div>
                     </div>
                     {quota.primary_window && (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="shrink-0 text-[13px] w-12 text-[hsl(var(--muted-foreground))]">Session</span>
-                        <MiniBar value={quota.primary_window.remaining_percent} max={100} showPercent isRemaining />
-                        <span className="shrink-0 text-[13px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums">
+                      <div className="flex items-center gap-3">
+                        <span className="shrink-0 text-[13px] w-16 text-[hsl(var(--muted-foreground))]">Session</span>
+                        <MiniBar className="flex-1" value={quota.primary_window.remaining_percent} max={100} showPercent isRemaining />
+                        <span className="shrink-0 text-[13px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums text-right w-16">
                           {fmtReset(quota.primary_window.reset_after_seconds, quota.primary_window.reset_at)}
                         </span>
                       </div>
                     )}
                     {quota.secondary_window && (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="shrink-0 text-[13px] w-12 text-[hsl(var(--muted-foreground))]">Secondary</span>
-                        <MiniBar value={quota.secondary_window.remaining_percent} max={100} showPercent isRemaining />
-                        <span className="shrink-0 text-[13px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums">
+                      <div className="flex items-center gap-3">
+                        <span className="shrink-0 text-[13px] w-16 text-[hsl(var(--muted-foreground))]">Secondary</span>
+                        <MiniBar className="flex-1" value={quota.secondary_window.remaining_percent} max={100} showPercent isRemaining />
+                        <span className="shrink-0 text-[13px] font-mono text-[hsl(var(--muted-foreground))] tabular-nums text-right w-16">
                           {fmtReset(quota.secondary_window.reset_after_seconds, quota.secondary_window.reset_at)}
                         </span>
                       </div>
